@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en" manifest="/wkal-cache.appcache">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="preload" href="/installer-hero.jpg" as="image" />
+  <title>WK Dual Payload v[[VERSION_PLACEHOLDER]]</title>
+  <style>
+    *{margin:0;padding:0;-webkit-box-sizing:border-box;box-sizing:border-box}
+    html,body{height:100%}
+    body{font-family:"Segoe UI",system-ui,-apple-system,sans-serif;background:#000;color:#2a9fff;min-height:100%;overflow:hidden;text-align:center}
+    #bg{position:fixed;top:0;right:0;bottom:0;left:0;z-index:0;pointer-events:none;background:#000 url("/installer-hero.jpg") center center/cover no-repeat}
+    #bg:after{content:"";position:absolute;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.38);pointer-events:none}
+    main{position:relative;z-index:2;height:100%;display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-orient:vertical;-webkit-flex-direction:column;flex-direction:column;-webkit-box-align:center;-webkit-align-items:center;align-items:center;-webkit-box-pack:start;-webkit-justify-content:flex-start;justify-content:flex-start;gap:12px;padding:46vh 24px 88px;background:transparent;box-sizing:border-box}
+    #statusMsg{margin:0 0 8px;color:#fff;font-size:22px;font-weight:700;letter-spacing:.06em;text-shadow:0 0 12px rgba(255,255,255,.4)}
+    #progressContainer{width:min(420px,78vw);height:14px;margin-top:12px;border-radius:8px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.45);overflow:hidden;position:relative;-webkit-box-shadow:0 0 18px rgba(255,255,255,.12);box-shadow:0 0 18px rgba(255,255,255,.12)}
+    #progressBar{position:absolute;top:0;left:0;height:100%;width:100%;background:#fff;background:-webkit-linear-gradient(90deg,#e8e8e8 0%,#fff 50%,#f5f5f5 100%);background:linear-gradient(90deg,#e8e8e8 0%,#fff 50%,#f5f5f5 100%);-webkit-box-shadow:0 0 14px rgba(255,255,255,.45);box-shadow:0 0 14px rgba(255,255,255,.45);-webkit-transform:scaleX(0);transform:scaleX(0);-webkit-transform-origin:left center;transform-origin:left center;-webkit-transition:-webkit-transform .85s cubic-bezier(.22,1,.36,1),background .35s ease;transition:transform .85s cubic-bezier(.22,1,.36,1),background .35s ease}
+    #progressPct{margin-top:10px;color:#fff;font-size:28px;font-weight:800;letter-spacing:.06em;text-shadow:0 0 14px rgba(255,255,255,.45)}
+    #elapsedMsg{margin-top:6px;color:#e5e5e5;font-size:14px;font-weight:600;letter-spacing:.04em;text-shadow:0 0 8px rgba(255,255,255,.2)}
+    #successMsg{display:none;margin-top:10px;color:#22c55e;font-size:18px;font-weight:800;letter-spacing:.02em;text-shadow:0 0 16px rgba(34,197,94,.45);line-height:1.3}
+    #successMsg .check{display:inline-block;width:16px;height:9px;margin:0 10px 3px 0;border-left:3px solid #2a9fff;border-bottom:3px solid #2a9fff;-webkit-transform:rotate(-45deg);transform:rotate(-45deg);vertical-align:middle;color:transparent;text-shadow:none;font-size:0}
+    body.done #statusMsg{display:none!important}
+    body.done #successMsg{display:block}
+    body.done #progressPct{color:#86efac}
+    body.done #elapsedMsg{color:#86efac}
+    body.done #progressBar{-webkit-transform:scaleX(1)!important;transform:scaleX(1)!important;background:#22c55e;background:-webkit-linear-gradient(90deg,#15803d 0%,#16a34a 40%,#22c55e 70%,#86efac 100%);background:linear-gradient(90deg,#15803d 0%,#16a34a 40%,#22c55e 70%,#86efac 100%);-webkit-box-shadow:0 0 14px rgba(34,197,94,.55);box-shadow:0 0 14px rgba(34,197,94,.55)}
+    #footer{position:fixed;left:0;right:0;bottom:10px;text-align:center;font-size:12px;color:#fff;letter-spacing:.08em;pointer-events:none;line-height:1.5;text-shadow:0 0 12px rgba(255,255,255,.35);z-index:20}
+    #footer b{color:#fff;font-weight:600}
+  </style>
+</head>
+<body>
+  <div id="bg" aria-hidden="true"></div>
+  <main>
+    <p id="statusMsg">Installing…</p>
+    <div id="progressContainer"><div id="progressBar"></div></div>
+    <div id="progressPct">0%</div>
+    <p id="elapsedMsg">Elapsed 0:00</p>
+    <div id="successMsg"><span class="check" aria-hidden="true"></span>Updated successfully<br>Opening WK Dual Payload…</div>
+  </main>
+  <footer id="footer"><b>Created by X-F1REBALL-X</b></footer>
+  <script>
+  (function(){
+    'use strict';
+    var statusEl=document.getElementById('statusMsg');
+    var progressBar=document.getElementById('progressBar');
+    var progressPct=document.getElementById('progressPct');
+    var elapsedMsgEl=document.getElementById('elapsedMsg');
+    var completed=false,installInFlight=false,currentUid='',probeOk=false;
+    var progressPctVal=0,progressTimer=0,elapsedTimer=0,elapsedStart=0,statusPoll=0;
+    /* Order: full AppCache settle → bar 100 → /install → wait __complete__ → open /app.
+       Homescreen deeplink must work offline after PC reboot, so never install/open early.
+       Mid-download AppCache error: silently retry update(); status stays Installing….
+       Progress soft-climbs to SOFT_CAP so the bar does not look frozen. */
+    var isDownloading=false,cacheSettled=false;
+    var progressComplete=false,sawProgress=false,barFull=false;
+    var settleTimer=0;
+    var APP_VERSION='[[VERSION_PLACEHOLDER]]';
+    var AUTOLOADER_URL='http://127.0.0.1:1022/app/index.html';
+    var SOFT_CAP=97;
+    /* Keep retrying AppCache until settle — offline home icon needs a full cache.
+       Soft backup retries update(); only settle on real terminal/IDLE+complete. */
+    var CACHE_RETRY_MS=8000;
+    var OPEN_POLL_MS=500;
+    (function(){
+      var p=new URLSearchParams(window.location.search);
+      currentUid=p.get('uid')||'';
+    })();
+    function setProgress(pct){
+      pct=Math.max(0,Math.min(100,pct|0));
+      if(pct<progressPctVal&&pct!==0&&pct!==100) return;
+      progressPctVal=pct;
+      progressBar.style.webkitTransform='scaleX('+(pct/100)+')';
+      progressBar.style.transform='scaleX('+(pct/100)+')';
+      progressPct.textContent=pct+'%';
+    }
+    function formatElapsed(ms){
+      var s=Math.floor(ms/1000),m=Math.floor(s/60);s=s%60;
+      return m+':'+(s<10?'0':'')+s;
+    }
+    function startElapsed(){
+      if(elapsedTimer) return;
+      elapsedStart=Date.now();
+      if(elapsedMsgEl) elapsedMsgEl.textContent='Elapsed 0:00';
+      elapsedTimer=setInterval(function(){
+        if(!elapsedMsgEl) return;
+        elapsedMsgEl.textContent='Elapsed '+formatElapsed(Date.now()-elapsedStart);
+      },1000);
+    }
+    function stopElapsed(){
+      if(elapsedTimer){ clearInterval(elapsedTimer); elapsedTimer=0; }
+    }
+    function finishUi(){
+      completed=true;
+      installInFlight=false;
+      stopElapsed();
+      if(progressTimer){ clearInterval(progressTimer); progressTimer=0; }
+      if(statusPoll){ clearInterval(statusPoll); statusPoll=0; }
+      if(settleTimer){ clearTimeout(settleTimer); settleTimer=0; }
+      try{document.body.className='done'}catch(e){}
+      setProgress(100);
+    }
+    function refreshStatus(){
+      if(completed) return;
+      /* Always Installing… — never show Caching offline / stuck banners. */
+      statusEl.textContent='Installing…';
+    }
+    function setCaching(){ refreshStatus(); }
+    function waitCompleteThenOpen(){
+      /* App must be fully cached before leaving installer — otherwise home icon 404s offline. */
+      var tries=0;
+      function tick(){
+        if(completed && document.body.className==='done' && tries>0){ /* already opened */ }
+        var xhr=new XMLHttpRequest();
+        xhr.open('GET','http://127.0.0.1:1022/app/'+APP_VERSION+'/__complete__',true);
+        xhr.timeout=4000;
+        xhr.onload=function(){
+          var body=(xhr.responseText||'').trim();
+          if(xhr.status===200 && body===APP_VERSION){
+            finishUi();
+            setTimeout(goToAutoloader, 250);
+            return;
+          }
+          tries++;
+          setCaching();
+          try{ applicationCache.update(); }catch(e){}
+          setTimeout(tick, OPEN_POLL_MS);
+        };
+        xhr.onerror=xhr.ontimeout=function(){
+          tries++;
+          setCaching();
+          try{ applicationCache.update(); }catch(e){}
+          setTimeout(tick, OPEN_POLL_MS);
+        };
+        xhr.send();
+      }
+      tick();
+    }
+    function goToAutoloader(){ window.location.replace(AUTOLOADER_URL); }
+    function probeServer(){
+      var xhr=new XMLHttpRequest();
+      xhr.open('GET','/version',true); xhr.timeout=1000;
+      xhr.onreadystatechange=function(){
+        if(xhr.readyState===4 && xhr.status===200){
+          var u=xhr.getResponseHeader('X-User-Id'); if(u) currentUid=u;
+          probeOk=true; setCaching();
+        }
+      };
+      xhr.onerror=xhr.ontimeout=function(){};
+      xhr.send();
+    }
+    function installApp(){
+      if(completed) return;
+      if(installInFlight) return;
+      installInFlight=true;
+      setCaching();
+      var xhr=new XMLHttpRequest();
+      xhr.open('GET','/install',true); xhr.timeout=120000;
+      xhr.onreadystatechange=function(){
+        if(xhr.readyState===4){
+          installInFlight=false;
+          if(xhr.status===200){
+            waitCompleteThenOpen();
+          } else {
+            setCaching(); setTimeout(installApp,1500);
+          }
+        }
+      };
+      xhr.onerror=xhr.ontimeout=function(){
+        installInFlight=false; setCaching(); setTimeout(installApp,1500);
+      };
+      xhr.send();
+    }
+    /* Step 2→3: animate bar to 100, THEN /install. */
+    function fillBarThenInstall(){
+      if(barFull||completed) return;
+      barFull=true;
+      if(progressTimer){ clearInterval(progressTimer); progressTimer=0; }
+      setCaching();
+      var from=progressPctVal,start=Date.now();
+      var anim=setInterval(function(){
+        var p=Math.min(1,(Date.now()-start)/700);
+        setProgress(Math.floor(from+(100-from)*p));
+        if(p>=1){
+          try{clearInterval(anim)}catch(eA){}
+          setProgress(100);
+          installApp();
+        }
+      },30);
+    }
+    /* Soft-gate: __complete__ (manifest last entry) proves AppCache is whole. */
+    function verifyCompleteThenSettle(){
+      if(completed||cacheSettled) return;
+      var xhr=new XMLHttpRequest();
+      /* Live absolute probe — avoids half-filled AppCache returning a fake miss. */
+      xhr.open('GET','http://127.0.0.1:1022/app/'+APP_VERSION+'/__complete__',true);
+      xhr.timeout=5000;
+      xhr.onload=function(){
+        var t=(xhr.responseText||'').trim();
+        if(xhr.status===200 && t===APP_VERSION){
+          onCacheSettled();
+        } else {
+          setCaching();
+          try{ applicationCache.update(); }catch(e){}
+        }
+      };
+      xhr.onerror=xhr.ontimeout=function(){
+        setCaching();
+        try{ applicationCache.update(); }catch(e){}
+      };
+      xhr.send();
+    }
+    /* Step 1 complete → bar to 100 → install. Only from real settle. */
+    function onCacheSettled(){
+      if(completed||cacheSettled) return;
+      cacheSettled=true;
+      if(statusPoll){ clearInterval(statusPoll); statusPoll=0; }
+      if(settleTimer){ clearTimeout(settleTimer); settleTimer=0; }
+      fillBarThenInstall();
+    }
+    function onTerminalCacheEvent(){
+      if(completed||cacheSettled) return;
+      progressComplete=true;
+      verifyCompleteThenSettle();
+    }
+    var softPct=2;
+    function startProgressDriver(){
+      if(progressTimer) return;
+      progressTimer=setInterval(function(){
+        if(document.body.className==='done'||barFull){
+          clearInterval(progressTimer); progressTimer=0; return;
+        }
+        var cap=SOFT_CAP;
+        /* Soft climb always inches toward SOFT_CAP while downloading so the bar
+           never looks frozen if progress events stall. Real lengthComputable
+           progress can jump softPct ahead; still never install until settle. */
+        if(softPct>=cap){
+          if(progressPctVal<cap) setProgress(cap);
+          return;
+        }
+        softPct+=Math.max(0.35,(cap-softPct)*0.035);
+        if(softPct>cap) softPct=cap;
+        setProgress(Math.floor(softPct));
+      },250);
+    }
+    window.addEventListener('load',function(){
+      setCaching(); setProgress(2); startElapsed(); startProgressDriver();
+      probeServer();
+      if(typeof applicationCache==='undefined'){
+        onCacheSettled();
+      } else {
+        try{ applicationCache.update(); }catch(eU){}
+        applicationCache.addEventListener('progress',function(e){
+          isDownloading=true;
+          if(barFull||completed) return;
+          if(e&&e.lengthComputable&&e.total>0){
+            sawProgress=true;
+            var p=Math.min(SOFT_CAP, Math.max(1, Math.floor((e.loaded/e.total)*SOFT_CAP)));
+            if(p>softPct) softPct=p;
+            if(p>progressPctVal) setProgress(p);
+            if(e.loaded>=e.total) progressComplete=true;
+          }
+          refreshStatus();
+        },false);
+        applicationCache.addEventListener('cached',function(){ onTerminalCacheEvent(); },false);
+        applicationCache.addEventListener('noupdate',function(){ onTerminalCacheEvent(); },false);
+        applicationCache.addEventListener('updateready',function(){
+          try{ applicationCache.swapCache(); }catch(eS){}
+          onTerminalCacheEvent();
+        },false);
+        applicationCache.addEventListener('error',function(){
+          /* PS5 WebKit often fires intermittent error mid-download without fatal
+             failure. Silently retry update(); keep waiting for real terminal
+             events (cached/noupdate/updateready). Never show stuck/error text. */
+          setCaching();
+          try{ applicationCache.update(); }catch(e){}
+        },false);
+        applicationCache.addEventListener('obsolete',function(){
+          setCaching();
+          try{ applicationCache.update(); }catch(e){}
+        },false);
+        /* IDLE only after lengthComputable complete — never bare IDLE. */
+        statusPoll=setInterval(function(){
+          if(completed||cacheSettled){ clearInterval(statusPoll); statusPoll=0; return; }
+          try{
+            var st=applicationCache.status;
+            if(st===applicationCache.DOWNLOADING) isDownloading=true;
+            if(st===applicationCache.UPDATEREADY){
+              try{ applicationCache.swapCache(); }catch(eS2){}
+              onTerminalCacheEvent();
+            } else if(st===applicationCache.IDLE && (progressComplete || softPct>=SOFT_CAP)){
+              onTerminalCacheEvent();
+            }
+          }catch(e){}
+        },400);
+        /* Backup: keep retrying AppCache update until a real settle event. */
+        function armCacheRetry(){
+          if(settleTimer) clearTimeout(settleTimer);
+          settleTimer=setTimeout(function(){
+            settleTimer=0;
+            if(completed||cacheSettled) return;
+            setCaching();
+            try{ applicationCache.update(); }catch(e){}
+            armCacheRetry();
+          }, CACHE_RETRY_MS);
+        }
+        armCacheRetry();
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

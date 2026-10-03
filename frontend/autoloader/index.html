@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <!-- Release tree marker: v1.0.0 -->
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="preload" href="ps5-hero.jpg" as="image" />
+  <title>WK Dual Payload</title>
+</head>
+<body>
+  <div id="bg" aria-hidden="true"></div>
+
+  <div id="splash" aria-hidden="false">
+    <div id="launcherChoice" role="group" aria-label="Post-jailbreak launcher">
+      <p class="splash-brand">WK Dual Payload <span class="splash-ver">v[[VERSION_PLACEHOLDER]]</span></p>
+      <p class="support-title">Supported FW 1.00-5.50 / 7.00-13.60</p>
+      <p class="detect-title" id="detectMsg">Detecting console...</p>
+      <p class="choice-title">After jailbreak, open</p>
+      <div class="choice-row">
+        <button type="button" class="choice-btn" id="choicePayloadManager" data-choice="payload-manager">
+          <img class="choice-icon" src="payload-manager-icon.jpg" width="56" height="56" alt="" />
+          <span class="choice-name">Payload Manager</span>
+          <span class="choice-desc">HTTP Manager on :8084</span>
+        </button>
+        <button type="button" class="choice-btn" id="choiceElfLauncher" data-choice="elf-launcher">
+          <img class="choice-icon" src="elf-launcher-icon.jpg" width="56" height="56" alt="" />
+          <span class="choice-name">Elf Launcher</span>
+          <span class="choice-desc">HTTP launcher on :1000</span>
+        </button>
+      </div>
+      <label class="auto-jb-toggle" for="autoJailbreak">
+        <input type="checkbox" id="autoJailbreak" />
+        <span>Auto-start jailbreak</span>
+      </label>
+      <button type="button" id="startJailbreak" class="start-btn">Start Jailbreak</button>
+      <button type="button" id="cancelAutoStart" class="cancel-auto-btn" hidden>Cancel</button>
+      <p class="choice-hint">Choice is saved on this console</p>
+    </div>
+  </div>
+
+  <iframe id="exploit" title="exploit" hidden></iframe>
+
+  <main id="loader" hidden>
+    <img id="appLogo" src="logo.png" alt="" width="72" height="72" />
+    <p id="titleMsg">WK Dual Payload <span id="appVer">v[[VERSION_PLACEHOLDER]]</span></p>
+    <p id="metaMsg">FW - · chain -</p>
+    <p id="statusMsg">Jailbreak started</p>
+    <div id="progressContainer">
+      <div id="progressBar"></div>
+    </div>
+    <div id="progressPct">0%</div>
+    <p id="elapsedMsg">Elapsed 0:00</p>
+    <div id="successMsg"><span class="check" aria-hidden="true"></span>Jailbreak completed successfully</div>
+    <div id="failMsg">Jailbreak failed - restart your console</div>
+    <div id="progressLabel" hidden>Jailbreak in progress</div>
+    <div id="logWrapper" hidden>
+      <div id="logContainer"></div>
+    </div>
+    <div id="p2jbStats" hidden>
+      <div class="stats-head">
+        <span class="stats-title">P2JB</span>
+        <span class="stats-chip" id="p2jbStepChip">STEP &ndash;/7</span>
+        <span class="stats-clock" id="p2jbClocks">total --:--:--</span>
+      </div>
+      <div class="stats-status" id="p2jbStatus">&#8230;</div>
+      <div class="stats-infoline">
+        <div class="stats-detail" id="p2jbDetail" hidden></div>
+        <div id="p2jbGroups" hidden></div>
+      </div>
+      <div class="stats-bar-row">
+        <div class="stats-bar-label"><span id="p2jbPhaseName">PHASE</span><span id="p2jbPhasePct">&ndash;</span></div>
+        <div class="stats-track"><div class="stats-fill" id="p2jbPhaseFill"></div></div>
+        <div class="stats-meta" id="p2jbPhaseMeta">ETA --:--:--</div>
+      </div>
+      <div class="stats-bar-row overall">
+        <div class="stats-bar-label"><span>OVERALL</span><span id="p2jbOverallPct">&ndash;</span></div>
+        <div class="stats-track big"><div class="stats-fill" id="p2jbOverallFill"></div></div>
+        <div class="stats-meta" id="p2jbOverallMeta">&ndash; left</div>
+      </div>
+    </div>
+  </main>
+
+  <footer id="footer"><b>Created by X-F1REBALL-X</b></footer>
+  <script src="app.js"></script>
+</body>
+</html>
