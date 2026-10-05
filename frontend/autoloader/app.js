@@ -97,7 +97,7 @@
   var CHOICE_ELF_LAUNCHER = 'elf-launcher';
   /* Generated from payloads/elf-launcher.elf.sha256 by payload-deps.
      Diagnostics only after a successful hybrid-down send. */
-  var BUNDLED_ELFLAUNCHER_SHA = '93082ac6df4320078cf86f4e3417c6a75a30eb99a6b14de9d0da1f0fdc818412';
+  var BUNDLED_ELFLAUNCHER_SHA = '65f9ea2945f7288c162155bb98881870fbe6e0ae955f743ac5a148d82a2d1384';
   var BUNDLED_ELFLAUNCHER_VER = 'tip';
   var launcherChoice = null;
   var elfHttpAlreadyUp = false;
