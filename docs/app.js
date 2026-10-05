@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  /* Release tree marker: v1.0.5. */
+  /* Release tree marker: v1.0.6. */
 
   /* i18n: prefer WKAL_I18N.t from i18n.js; fall back to English key text. */
   function t(key, vars) {
@@ -693,6 +693,10 @@
     }
     setTimeout(function () {
       if (!data.ok) return;
+      if (updateOnlyMode || pendingSelfUpdate) {
+        uiLog('[update] skipping companion open - WK install only', 'info');
+        return;
+      }
       var sent = !data.skipped && Number(data.bytes) > 0;
       if (launcherChoice === CHOICE_ELF_LAUNCHER) {
         if (elfHttpAlreadyUp) {
@@ -1463,10 +1467,17 @@
   function start() {
     /* Keep the banner if Update was queued for after jailbreak. */
     if (!pendingSelfUpdate) hideSelfUpdateBanner();
-    /* Explicit splash choice only. Anything else is wkal-skip.
-       Elf Launcher Hybrid: probe :1000 first — up => open-only; down => send tip. */
     launcherHttpOpenStarted = false;
     elfHttpAlreadyUp = false;
+    /* Self-update Apply: jailbreak with wkal-skip only (no tip / pldmgr). */
+    if (pendingSelfUpdate || updateOnlyMode) {
+      updateOnlyMode = true;
+      uiLog('[update] jailbreak only - no auto ELF tip', 'info');
+      startChain(true);
+      return;
+    }
+    /* Explicit splash choice only. Anything else is wkal-skip.
+       Elf Launcher Hybrid: probe :1000 first — up => open-only; down => send tip. */
     if (launcherChoice === CHOICE_ELF_LAUNCHER) {
       uiLog('Probing Elf Launcher HTTP :1000 ...', 'info');
       probeElfLauncherHttp(function (up) {
@@ -1716,6 +1727,7 @@
   var selfUpdateMsgTimer = 0;
   var pendingSelfUpdate = false;
   var selfUpdateSent = false;
+  var updateOnlyMode = false; /* Update path: JB + WK ELF only, no tip */
 
   function semverParts(v) {
     v = String(v || '').replace(/^\s+|\s+$/g, '').replace(/^[vV]/, '');
@@ -1904,27 +1916,89 @@
     setTimeout(function () { fin(true); }, 1600);
   }
 
+  function waitForNewWkAndReload(ver) {
+    var tries = 0;
+    var maxTries = 80;
+    ensureSelfUpdateBannerVisible();
+    selfUpdateMessage(t('selfUpdateInstalling', { ver: ver }));
+    uiLog('[update] waiting for installer ' + ver + ' on :1022 ...', 'info');
+    function tick() {
+      tries++;
+      function again() {
+        if (tries >= maxTries) {
+          selfUpdateMessage(t('selfUpdateFail', { msg: 'install timeout' }));
+          return;
+        }
+        setTimeout(tick, 1500);
+      }
+      var url = 'http://127.0.0.1:1022/version';
+      if (typeof fetch === 'function') {
+        fetch(url, { cache: 'no-store' })
+          .then(function (r) { return r.text(); })
+          .then(function (body) {
+            body = String(body || '').replace(/^\s+|\s+$/g, '');
+            if (body && (cmpSemver(body, ver) >= 0 || body.indexOf(ver) === 0)) {
+              rememberSelfUpdateDismiss(ver);
+              selfUpdateMessage(t('selfUpdateReloading', { ver: ver }));
+              uiLog('[update] :1022 reports ' + body + ' - reloading', 'success');
+              setTimeout(function () {
+                try { location.href = 'http://127.0.0.1:1022/?v=' + encodeURIComponent(ver); }
+                catch (e) { try { location.reload(); } catch (e2) { } }
+              }, 900);
+              return;
+            }
+            again();
+          })
+          .catch(again);
+        return;
+      }
+      try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.timeout = 4000;
+        xhr.onload = function () {
+          var body = String(xhr.responseText || '').replace(/^\s+|\s+$/g, '');
+          if (xhr.status >= 200 && xhr.status < 300 && body &&
+              (cmpSemver(body, ver) >= 0 || body.indexOf(ver) === 0)) {
+            rememberSelfUpdateDismiss(ver);
+            selfUpdateMessage(t('selfUpdateReloading', { ver: ver }));
+            setTimeout(function () {
+              try { location.href = 'http://127.0.0.1:1022/?v=' + encodeURIComponent(ver); }
+              catch (e) { try { location.reload(); } catch (e2) { } }
+            }, 900);
+            return;
+          }
+          again();
+        };
+        xhr.onerror = again;
+        xhr.ontimeout = again;
+        xhr.send();
+      } catch (e3) { again(); }
+    }
+    setTimeout(tick, 2500);
+  }
+
   function applySelfUpdateNow(reason) {
     var info = selfUpdateInfo;
     var btn = document.getElementById('selfupddl');
     if (!info || !info.url || selfUpdateSent) return;
     selfUpdateSent = true;
     pendingSelfUpdate = false;
+    updateOnlyMode = true;
     ensureSelfUpdateBannerVisible();
     if (btn) btn.disabled = true;
     selfUpdateMessage(t('selfUpdating', { ver: info.version }));
-    uiLog('[update] applying ' + info.version + (reason ? ' (' + reason + ')' : ''), 'info');
+    uiLog('[update] applying ' + info.version + (reason ? ' (' + reason + ')' : '') + ' - WK ELF only', 'info');
     sendUrlToElfldr(info.url, function () {
       if (btn) btn.disabled = false;
-      rememberSelfUpdateDismiss(info.version);
-      selfUpdateMessage(t('selfUpdated', { ver: info.version }), 8000);
+      selfUpdateMessage(t('selfUpdated', { ver: info.version }));
+      waitForNewWkAndReload(info.version);
     });
   }
 
   /* After JB / elfldr ready: flush a queued Update click once. */
   function maybeApplyPendingSelfUpdate(reason) {
     if (!pendingSelfUpdate || !selfUpdateInfo || !selfUpdateInfo.url || selfUpdateSent) return;
-    /* Do not race the tip ELF send - wait for autoload-ok while tip is in flight. */
     if (autoloadPending && reason !== 'autoload-ok') return;
     applySelfUpdateNow(reason || 'after-jb');
   }
@@ -1934,19 +2008,28 @@
     var btn = document.getElementById('selfupddl');
     if (!info) return;
     if (/PlayStation/i.test(navigator.userAgent) && info.url) {
-      /* Before this-session JB finishes: queue + speculative ping (prior
-         elfldr may already be up). Never leave a hard "elfldr not running"
-         dead-end - the queued send fires when autoload / elfldr is ready. */
-      if (!finished) {
-        pendingSelfUpdate = true;
-        if (btn) btn.disabled = true;
-        ensureSelfUpdateBannerVisible();
-        selfUpdateMessage(t('selfUpdateAfterJb'));
-        uiLog('[update] queued ' + info.version + ' until jailbreak / elfldr ready', 'info');
-        sendUrlToElfldr(info.url, function () { /* speculative; pending still applies after JB */ });
+      pendingSelfUpdate = true;
+      updateOnlyMode = true;
+      selfUpdateSent = false;
+      ensureSelfUpdateBannerVisible();
+      if (btn) btn.disabled = true;
+      /* Already jailbroken this session: send WK only. */
+      if (finished) {
+        applySelfUpdateNow('manual');
         return;
       }
-      applySelfUpdateNow('manual');
+      /* Start JB with wkal-skip (no tip). Apply runs after elfldr ready. */
+      selfUpdateMessage(t('selfUpdateStartJb', { ver: info.version }));
+      uiLog('[update] starting jailbreak for WK ' + info.version + ' install only', 'info');
+      if (!chainStarted) {
+        try {
+          var go = document.getElementById('startJailbreak');
+          if (go) go.disabled = true;
+        } catch (e0) { }
+        start();
+      } else {
+        selfUpdateMessage(t('selfUpdateAfterJb'));
+      }
       return;
     }
     try { window.open(info.url || info.page || SELFUPD_RELEASES_URL, '_blank'); } catch (e) { }

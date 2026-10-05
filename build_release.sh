@@ -1,6 +1,6 @@
 #!/bin/bash
 # WebKit Autoloader Installer - Versioned Release Build Script
-# Release tree marker: v1.0.6
+# Release tree marker: v1.0.7
 
 # 1. Compute full version (stable = base, dev = base + build type + git hash/timestamp)
 VERSION=$(python3 tools/gen_version.py --print)
