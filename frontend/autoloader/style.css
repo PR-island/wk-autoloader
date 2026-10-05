@@ -870,6 +870,28 @@ body.fail #progressPct { color: #fca5a5; }
   z-index: 0;
   clear: both;
 }
+
+.pages-links {
+  margin-top: 8px;
+  text-align: left;
+  position: relative;
+  z-index: 0;
+  clear: both;
+}
+.pages-link {
+  color: #9fd0ff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.pages-link:hover,
+.pages-link:focus {
+  color: #ffffff;
+  outline: 0;
+}
+
 #splash.hide #launcherChoice {
   pointer-events: none;
 }
