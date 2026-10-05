@@ -78,8 +78,8 @@ static pid_t find_pid(const char *name) {
  * window kills the jailbreak page and the console crashes.
  *
  * Run before every cache/install flow so the sender has fully detached
- * before the browser is opened. Wait for the sender to hang up, then give
- * the page time to leave its syscall. */
+ * before the browser is opened. Wait for the sender to hang up, then a
+ * short settle so the page can leave its syscall. */
 static void wait_for_elf_sender(void) {
     struct pollfd pfd;
     char drain[512];
@@ -124,7 +124,7 @@ static void wait_for_elf_sender(void) {
         break;
     }
 
-    sleep(5);
+    sleep(1);
 }
 
 /* PS5 System Calls (Internal) */

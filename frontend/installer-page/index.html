@@ -50,18 +50,19 @@
     var progressPctVal=0,progressTimer=0,elapsedTimer=0,elapsedStart=0,statusPoll=0;
     /* Order: full AppCache settle → bar 100 → /install → wait __complete__ → open /app.
        Homescreen deeplink must work offline after PC reboot, so never install/open early.
-       Mid-download AppCache error: silently retry update(); status stays Installing….
-       Progress soft-climbs to SOFT_CAP so the bar does not look frozen. */
+       Mid-download AppCache error: silently retry update() only when not already
+       CHECKING/DOWNLOADING (update mid-flight restarts and stalls near soft 97%).
+       Progress tracks real AppCache loaded/total when available; soft-climb is backup. */
     var isDownloading=false,cacheSettled=false;
     var progressComplete=false,sawProgress=false,barFull=false;
-    var settleTimer=0;
+    var settleTimer=0,progressCompleteAt=0,lastSafeUpdate=0;
     var APP_VERSION='[[VERSION_PLACEHOLDER]]';
     var AUTOLOADER_URL='http://127.0.0.1:1022/app/index.html';
-    var SOFT_CAP=97;
-    /* Keep retrying AppCache until settle — offline home icon needs a full cache.
-       Soft backup retries update(); only settle on real terminal/IDLE+complete. */
+    /* Soft max before settle — leave 100% for real completion only. */
+    var SOFT_CAP=99;
     var CACHE_RETRY_MS=8000;
     var OPEN_POLL_MS=500;
+    var SETTLE_AFTER_COMPLETE_MS=1200;
     (function(){
       var p=new URLSearchParams(window.location.search);
       currentUid=p.get('uid')||'';
@@ -102,15 +103,28 @@
     }
     function refreshStatus(){
       if(completed) return;
-      /* Always Installing… — never show Caching offline / stuck banners. */
       statusEl.textContent='Installing…';
     }
     function setCaching(){ refreshStatus(); }
+    function cacheStatus(){
+      try{ return applicationCache.status; }catch(e){ return -1; }
+    }
+    /* Never call update() while CHECKING/DOWNLOADING — PS5 WebKit restarts the
+       fetch and the bar sits at soft-cap forever. */
+    function safeCacheUpdate(){
+      try{
+        var st=cacheStatus();
+        if(st===applicationCache.CHECKING || st===applicationCache.DOWNLOADING) return false;
+        var now=Date.now();
+        if(now-lastSafeUpdate<1500) return false;
+        lastSafeUpdate=now;
+        applicationCache.update();
+        return true;
+      }catch(e){ return false; }
+    }
     function waitCompleteThenOpen(){
-      /* App must be fully cached before leaving installer — otherwise home icon 404s offline. */
       var tries=0;
       function tick(){
-        if(completed && document.body.className==='done' && tries>0){ /* already opened */ }
         var xhr=new XMLHttpRequest();
         xhr.open('GET','http://127.0.0.1:1022/app/'+APP_VERSION+'/__complete__',true);
         xhr.timeout=4000;
@@ -123,13 +137,13 @@
           }
           tries++;
           setCaching();
-          try{ applicationCache.update(); }catch(e){}
+          safeCacheUpdate();
           setTimeout(tick, OPEN_POLL_MS);
         };
         xhr.onerror=xhr.ontimeout=function(){
           tries++;
           setCaching();
-          try{ applicationCache.update(); }catch(e){}
+          safeCacheUpdate();
           setTimeout(tick, OPEN_POLL_MS);
         };
         xhr.send();
@@ -171,28 +185,18 @@
       };
       xhr.send();
     }
-    /* Step 2→3: animate bar to 100, THEN /install. */
+    /* Cache is whole — jump to 100 and /install immediately (no 700ms hold). */
     function fillBarThenInstall(){
       if(barFull||completed) return;
       barFull=true;
       if(progressTimer){ clearInterval(progressTimer); progressTimer=0; }
       setCaching();
-      var from=progressPctVal,start=Date.now();
-      var anim=setInterval(function(){
-        var p=Math.min(1,(Date.now()-start)/700);
-        setProgress(Math.floor(from+(100-from)*p));
-        if(p>=1){
-          try{clearInterval(anim)}catch(eA){}
-          setProgress(100);
-          installApp();
-        }
-      },30);
+      setProgress(100);
+      installApp();
     }
-    /* Soft-gate: __complete__ (manifest last entry) proves AppCache is whole. */
     function verifyCompleteThenSettle(){
       if(completed||cacheSettled) return;
       var xhr=new XMLHttpRequest();
-      /* Live absolute probe — avoids half-filled AppCache returning a fake miss. */
       xhr.open('GET','http://127.0.0.1:1022/app/'+APP_VERSION+'/__complete__',true);
       xhr.timeout=5000;
       xhr.onload=function(){
@@ -201,16 +205,15 @@
           onCacheSettled();
         } else {
           setCaching();
-          try{ applicationCache.update(); }catch(e){}
+          safeCacheUpdate();
         }
       };
       xhr.onerror=xhr.ontimeout=function(){
         setCaching();
-        try{ applicationCache.update(); }catch(e){}
+        safeCacheUpdate();
       };
       xhr.send();
     }
-    /* Step 1 complete → bar to 100 → install. Only from real settle. */
     function onCacheSettled(){
       if(completed||cacheSettled) return;
       cacheSettled=true;
@@ -221,7 +224,17 @@
     function onTerminalCacheEvent(){
       if(completed||cacheSettled) return;
       progressComplete=true;
+      if(!progressCompleteAt) progressCompleteAt=Date.now();
       verifyCompleteThenSettle();
+    }
+    function markProgressComplete(){
+      if(progressComplete) return;
+      progressComplete=true;
+      progressCompleteAt=Date.now();
+      /* PS5 often omits cached/updateready after the last progress event. */
+      setTimeout(function(){
+        if(!cacheSettled && !completed) verifyCompleteThenSettle();
+      }, SETTLE_AFTER_COMPLETE_MS);
     }
     var softPct=2;
     function startProgressDriver(){
@@ -231,17 +244,29 @@
           clearInterval(progressTimer); progressTimer=0; return;
         }
         var cap=SOFT_CAP;
-        /* Soft climb always inches toward SOFT_CAP while downloading so the bar
-           never looks frozen if progress events stall. Real lengthComputable
-           progress can jump softPct ahead; still never install until settle. */
+        /* Prefer real lengthComputable progress. Soft climb only fills gaps so
+           the bar never freezes, and never outruns a live loaded/total ratio. */
+        if(sawProgress){
+          /* Keep inching toward SOFT_CAP if progress events stall mid-way, but
+             never jump past real loaded/total (softPct is raised by progress). */
+          if(softPct<progressPctVal) softPct=progressPctVal;
+          if(softPct<cap){
+            softPct+=Math.max(0.12,(cap-softPct)*0.015);
+            if(softPct>cap) softPct=cap;
+            if(Math.floor(softPct)>progressPctVal) setProgress(Math.floor(softPct));
+          } else if(progressPctVal<cap){
+            setProgress(cap);
+          }
+          return;
+        }
         if(softPct>=cap){
           if(progressPctVal<cap) setProgress(cap);
           return;
         }
-        softPct+=Math.max(0.35,(cap-softPct)*0.035);
+        softPct+=Math.max(0.25,(cap-softPct)*0.04);
         if(softPct>cap) softPct=cap;
         setProgress(Math.floor(softPct));
-      },250);
+      },200);
     }
     window.addEventListener('load',function(){
       setCaching(); setProgress(2); startElapsed(); startProgressDriver();
@@ -249,7 +274,7 @@
       if(typeof applicationCache==='undefined'){
         onCacheSettled();
       } else {
-        try{ applicationCache.update(); }catch(eU){}
+        safeCacheUpdate();
         applicationCache.addEventListener('progress',function(e){
           isDownloading=true;
           if(barFull||completed) return;
@@ -258,7 +283,7 @@
             var p=Math.min(SOFT_CAP, Math.max(1, Math.floor((e.loaded/e.total)*SOFT_CAP)));
             if(p>softPct) softPct=p;
             if(p>progressPctVal) setProgress(p);
-            if(e.loaded>=e.total) progressComplete=true;
+            if(e.loaded>=e.total) markProgressComplete();
           }
           refreshStatus();
         },false);
@@ -269,17 +294,24 @@
           onTerminalCacheEvent();
         },false);
         applicationCache.addEventListener('error',function(){
-          /* PS5 WebKit often fires intermittent error mid-download without fatal
-             failure. Silently retry update(); keep waiting for real terminal
-             events (cached/noupdate/updateready). Never show stuck/error text. */
+          /* Spurious mid-download errors are common. If we already saw a full
+             progress pass, try settle; otherwise only safe-retry when idle. */
           setCaching();
-          try{ applicationCache.update(); }catch(e){}
+          if(progressComplete || softPct>=SOFT_CAP){
+            setTimeout(function(){
+              if(!cacheSettled && !completed) verifyCompleteThenSettle();
+            }, 400);
+          }
+          setTimeout(function(){
+            if(!cacheSettled && !completed) safeCacheUpdate();
+          }, 2000);
         },false);
         applicationCache.addEventListener('obsolete',function(){
           setCaching();
-          try{ applicationCache.update(); }catch(e){}
+          setTimeout(function(){
+            if(!cacheSettled && !completed) safeCacheUpdate();
+          }, 1000);
         },false);
-        /* IDLE only after lengthComputable complete — never bare IDLE. */
         statusPoll=setInterval(function(){
           if(completed||cacheSettled){ clearInterval(statusPoll); statusPoll=0; return; }
           try{
@@ -290,17 +322,23 @@
               onTerminalCacheEvent();
             } else if(st===applicationCache.IDLE && (progressComplete || softPct>=SOFT_CAP)){
               onTerminalCacheEvent();
+            } else if(progressComplete && progressCompleteAt &&
+                      (Date.now()-progressCompleteAt)>=SETTLE_AFTER_COMPLETE_MS){
+              /* loaded==total already — do not wait forever for a missing cached event. */
+              verifyCompleteThenSettle();
             }
           }catch(e){}
         },400);
-        /* Backup: keep retrying AppCache update until a real settle event. */
         function armCacheRetry(){
           if(settleTimer) clearTimeout(settleTimer);
           settleTimer=setTimeout(function(){
             settleTimer=0;
             if(completed||cacheSettled) return;
             setCaching();
-            try{ applicationCache.update(); }catch(e){}
+            if(progressComplete || softPct>=SOFT_CAP){
+              verifyCompleteThenSettle();
+            }
+            safeCacheUpdate();
             armCacheRetry();
           }, CACHE_RETRY_MS);
         }
@@ -309,5 +347,6 @@
     });
   })();
   </script>
+
 </body>
 </html>

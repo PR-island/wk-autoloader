@@ -87,6 +87,10 @@ def include_in_registry(path):
         return False
     if path.endswith(".sha256"):
         return False
+    # README / unused SVG icons bloat AppCache and have stalled PS5 WebKit near 97%.
+    name = os.path.basename(path.split("?", 1)[0])
+    if name.endswith(".md") or name in ("favicon.svg", "logo.svg"):
+        return False
     return True
 
 
@@ -243,7 +247,13 @@ def collect_cachebust_urls(files):
 
 def manifest_omits_unused_tree(path):
     """umtx2 and slopkit are not cached. Their trees stall PS5 AppCache near 97%."""
-    return "/umtx2/" in path or "/slopkit/" in path
+    if "/umtx2/" in path or "/slopkit/" in path:
+        return True
+    # Relapse loads offsets only as offsets/<fw>.js?v=1. Listing the plain path
+    # too doubles every offset fetch and slows/stalls the soft 97% window.
+    if "?" not in path and "/relapse/offsets/" in path and path.endswith(".js"):
+        return True
+    return False
 
 
 def build_manifest(files, version, build_time, app_dir, pointer_path, marker_path):
