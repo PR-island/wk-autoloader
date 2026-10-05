@@ -673,13 +673,13 @@
       if (!data.ok) return;
       var sent = !data.skipped && Number(data.bytes) > 0;
       if (launcherChoice === CHOICE_ELF_LAUNCHER) {
-        /* The ELF opens http://127.0.0.1:1000/ only when Open browser is saved.
-           Leave closed stays closed and still loads Auto on the host. */
+        /* Keep WK light: send elf-launcher.elf, then navigate to the existing
+           :1000 UI (same clean URL as the home icon). Do not embed Elf UI here. */
         if (!sent) {
-          uiLog('elf-launcher send missing - Open or Auto did not start.', 'warning');
+          uiLog('elf-launcher send missing - not opening :1000 yet.', 'warning');
           return;
         }
-        uiLog('elf-launcher sent - Open browser or Leave closed applies on the console', 'success');
+        openElfLauncherPage();
       } else if (launcherChoice === CHOICE_PAYLOAD_MANAGER) {
         if (!sent) {
           uiLog('Payload Manager send missing - not opening :8084 yet.', 'warning');
