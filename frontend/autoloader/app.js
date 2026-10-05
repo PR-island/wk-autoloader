@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  /* Release tree marker: v1.0.1. */
+  /* Release tree marker: v1.0.2. */
 
   var splashEl = document.getElementById('splash');
   var loaderEl = document.getElementById('loader');
@@ -82,16 +82,25 @@
 
   /* Post-JB launcher preference (localStorage). Explicit values only:
        payload-manager -> frontend/autoloader/payloads/pldmgr.elf
-       elf-launcher    -> open existing :1000 only (never send/bundle ELF)
+       elf-launcher    -> Hybrid: probe :1000; if up open only; if down send
+                          on-disk elf-launcher.elf (tip), wait, then open.
      Missing, default, or any other value emits wkal-skip so elfldr is
      sent nothing. pldmgr.elf is the standalone itsPLK Payload Manager.
      payload.elf is the unified autoloader and must not be sent for this
      choice. elfldr accepts one ELF; do not pre-send a second one when
-     the installer loads. WK never installs or updates Elf Launcher. */
+     the installer loads. WK never pins/downgrades Elf Launcher via an
+     old bundled SHA — payloads come from the current on-disk tip. */
   var LS_LAUNCHER_KEY = 'wkal_postjb_launcher';
+  var LS_ELFLAUNCHER_SHA = 'wkal_elflauncher_sha';
+  var LS_ELFLAUNCHER_VER = 'wkal_elflauncher_ver';
   var CHOICE_PAYLOAD_MANAGER = 'payload-manager';
   var CHOICE_ELF_LAUNCHER = 'elf-launcher';
+  /* Generated from payloads/elf-launcher.elf.sha256 by payload-deps.
+     Diagnostics only after a successful hybrid-down send. */
+  var BUNDLED_ELFLAUNCHER_SHA = '93082ac6df4320078cf86f4e3417c6a75a30eb99a6b14de9d0da1f0fdc818412';
+  var BUNDLED_ELFLAUNCHER_VER = 'tip';
   var launcherChoice = null;
+  var elfHttpAlreadyUp = false;
 
   function isExplicitLauncherChoice(choice) {
     return choice === CHOICE_PAYLOAD_MANAGER || choice === CHOICE_ELF_LAUNCHER;
@@ -117,8 +126,10 @@
   }
 
   function autoloadElfName() {
-    /* Elf Launcher: never send an ELF — only open the installed :1000 page. */
-    if (launcherChoice === CHOICE_ELF_LAUNCHER) return 'wkal-skip';
+    /* Hybrid Elf Launcher: open-only when :1000 already up; else send tip ELF. */
+    if (launcherChoice === CHOICE_ELF_LAUNCHER) {
+      return elfHttpAlreadyUp ? 'wkal-skip' : 'elf-launcher.elf';
+    }
     if (launcherChoice === CHOICE_PAYLOAD_MANAGER) return 'pldmgr.elf';
     return 'wkal-skip';
   }
@@ -404,9 +415,11 @@
   }
 
   /* Poll until the launcher HTTP returns 200 + ready document, then settle
-     and navigate. On give-up always lastChanceNavigate (top.location.replace).
-     elf-launcher: XHR often fails (CORS/mixed) while :1000 is up — still
-     replace after send+settle so WK closes. JB success is marked first. */
+     and navigate. Hybrid elf-launcher:
+       - :1000 was up (probe): on give-up lastChanceNavigate (CORS may hide
+         the ready doc while the server is live).
+       - :1000 was down (we sent tip ELF): never navigate to a dead :1000 —
+         one auto-resend, then Retry UI. JB success is marked first. */
   function revealLogPanel() {
     try {
       var wrap = document.getElementById('logWrapper');
@@ -477,8 +490,7 @@
 
     function lastChanceNavigate(reason) {
       if (opened) return;
-      /* elf-launcher: XHR probe often fails (CORS/mixed) while :1000 is up.
-         Always replace so WKAL closes and the installed :1000 page opens. */
+      /* Only when :1000 was already up at probe (CORS/mixed can hide ready). */
       uiLog(label + ' opening :' + portHint + ' (' + reason + ') ...', 'warning');
       opened = true;
       done = true;
@@ -487,8 +499,24 @@
 
     function onGiveUp(reason) {
       if (opened || done) return;
-      /* Elf Launcher is open-only (no ELF send/resend). Always navigate. */
-      lastChanceNavigate(reason);
+      if (label === 'elf-launcher') {
+        if (elfHttpAlreadyUp) {
+          lastChanceNavigate(reason);
+          return;
+        }
+        /* Hybrid-down: server was off; we sent tip ELF. Do not open a dead page. */
+        if (!autoResendUsed) {
+          autoResendUsed = true;
+          uiLog('Auto-retry: re-sending elf-launcher.elf to :9021 ...', 'warning');
+          requestResendAutoload();
+          started = Date.now();
+          setTimeout(attempt, 4000);
+          return;
+        }
+        offerRetry(reason);
+        return;
+      }
+      offerRetry(reason);
     }
 
     function doNavigate() {
@@ -553,8 +581,6 @@
   var launcherHttpOpenStarted = false;
 
 
-  var elfHttpAlreadyUp = false;
-
   function elfBrowserWantsOpen() {
     var v = '';
     var parts, i, c;
@@ -590,11 +616,16 @@
   function openElfLauncherPage() {
     if (launcherHttpOpenStarted) return;
     launcherHttpOpenStarted = true;
-    /* Open the already-installed Elf Launcher page on :1000 (home-icon URL).
-       WK never sends or installs elf-launcher.elf. Cache-bust breaks assets. */
-    uiLog('Opening installed Elf Launcher at :1000 ...', 'success');
-    openWhenHttpReady(consoleHttpBase(1000), 'elf-launcher', '1000',
-      20000, 2500, 800, true);
+    /* Home-icon URL (no cache-bust) — query strings break Elf Launcher assets. */
+    if (elfHttpAlreadyUp) {
+      uiLog('Elf Launcher :1000 already up - opening (no ELF send) ...', 'success');
+      openWhenHttpReady(consoleHttpBase(1000), 'elf-launcher', '1000',
+        12000, 400, 400, false);
+    } else {
+      uiLog('elf-launcher.elf sent - opening :1000 when ready ...', 'success');
+      openWhenHttpReady(consoleHttpBase(1000), 'elf-launcher', '1000',
+        25000, 2500, 800, true);
+    }
   }
 
   function openPayloadManagerPage() {
@@ -647,7 +678,23 @@
       if (!data.ok) return;
       var sent = !data.skipped && Number(data.bytes) > 0;
       if (launcherChoice === CHOICE_ELF_LAUNCHER) {
-        /* Open-only: never send elf-launcher.elf; open installed :1000 page. */
+        if (elfHttpAlreadyUp) {
+          openElfLauncherPage();
+          return;
+        }
+        if (!sent) {
+          uiLog('elf-launcher send missing - not opening :1000 yet.', 'warning');
+          revealLogPanel();
+          return;
+        }
+        try {
+          if (BUNDLED_ELFLAUNCHER_SHA && BUNDLED_ELFLAUNCHER_SHA.indexOf('0000') !== 0) {
+            localStorage.setItem(LS_ELFLAUNCHER_SHA, BUNDLED_ELFLAUNCHER_SHA);
+          }
+          if (BUNDLED_ELFLAUNCHER_VER) {
+            localStorage.setItem(LS_ELFLAUNCHER_VER, BUNDLED_ELFLAUNCHER_VER);
+          }
+        } catch (eSha) { }
         openElfLauncherPage();
       } else if (launcherChoice === CHOICE_PAYLOAD_MANAGER) {
         if (!sent) {
@@ -1393,10 +1440,24 @@
   }
 
   function start() {
-    /* Explicit splash choice only. Anything else is wkal-skip: one name,
-       nothing sent to 9021, Elf Launcher stays closed. */
+    /* Explicit splash choice only. Anything else is wkal-skip.
+       Elf Launcher Hybrid: probe :1000 first — up => open-only; down => send tip. */
     launcherHttpOpenStarted = false;
     elfHttpAlreadyUp = false;
+    if (launcherChoice === CHOICE_ELF_LAUNCHER) {
+      uiLog('Probing Elf Launcher HTTP :1000 ...', 'info');
+      probeElfLauncherHttp(function (up) {
+        elfHttpAlreadyUp = !!up;
+        if (elfHttpAlreadyUp) {
+          uiLog(':1000 is up — Hybrid open-only (no ELF send).', 'success');
+          startChain(true);
+        } else {
+          uiLog(':1000 down — Hybrid will send on-disk elf-launcher.elf after JB.', 'info');
+          startChain(false);
+        }
+      });
+      return;
+    }
     startChain(!isExplicitLauncherChoice(launcherChoice));
   }
 
@@ -1441,7 +1502,9 @@
       : picked === 'p2jb' ? P2JB_URL
         : RELAPSE_URL;
     uiLog('Post-JB launcher: ' + (launcherChoice === CHOICE_ELF_LAUNCHER
-      ? 'Elf Launcher (open :1000 only, no ELF send)'
+      ? (elfHttpAlreadyUp
+        ? 'Elf Launcher Hybrid (open :1000 only)'
+        : 'Elf Launcher Hybrid (send ' + autoloadName + ' then open :1000)')
       : autoloadName === 'pldmgr.elf'
         ? 'Payload Manager (' + autoloadName + ')'
         : 'none (' + autoloadName + ')'), 'info');

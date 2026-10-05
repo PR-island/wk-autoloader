@@ -14,7 +14,7 @@ PS5 homebrew: jailbreak UI on port **1022**. Chains: **umtx2** (1-5.50), **relap
 
 `wk-dual-payload.elf` installs a **Media** home-screen app and caches the offline UI. After that finishes, the home icon works offline, including after reboot, until the cache is invalidated. No need to resend the ELF each boot.
 
-After the jailbreak, choosing **Payload Manager** sends `pldmgr.elf` and opens `:8084`. Choosing **Elf Launcher** only opens the already-installed page on `:1000` — WK never sends, bundles, or updates `elf-launcher.elf`.
+After the jailbreak, choosing **Payload Manager** sends `pldmgr.elf` and opens `:8084`. Choosing **Elf Launcher** is **Hybrid**: if `:1000` is already up, WK only opens that page; if it is down, WK sends the current on-disk tip `elf-launcher.elf` (never an old pinned downgrade), waits for `:1000`, then opens. WK does not navigate to a dead `:1000` when the send fails.
 
 ## Use
 

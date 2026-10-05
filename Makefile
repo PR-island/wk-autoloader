@@ -1,5 +1,5 @@
 # WebKit Autoloader Installer - Native PS5 ELF Makefile
-# Release tree marker: v1.0.1
+# Release tree marker: v1.0.2
 
 # Tools
 PYTHON := python3
@@ -91,12 +91,12 @@ umtx2-prepare:
 	@echo "Preparing umtx2 copy..."
 	./tools/apply_umtx2_patch.sh
 
-# Fetch the shared elfldr + bundled autoload ELFs (Payload Manager) from
+# Fetch the shared elfldr + bundled autoload ELFs (Payload Manager + Hybrid Elf tip) from
 # their pinned GitHub releases (tools/download_deps.sh). Idempotent: skips when
 # the binaries are already present and verified, so offline rebuilds still work.
 .PHONY: payload-deps
 payload-deps:
-	@echo "Fetching shared elfldr + Payload Manager payloads..."
+	@echo "Fetching shared elfldr + Payload Manager + Elf Launcher tip payloads..."
 	./tools/download_deps.sh
 
 $(FILE_REGISTRY_STAMP): $(FRONTEND_FILES) version icons slopkit-prepare umtx2-prepare payload-deps companions

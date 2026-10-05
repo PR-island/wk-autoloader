@@ -74,5 +74,6 @@ __pycache__/
 !docs/relapse/payloads/
 !docs/relapse/payloads/elfldr-ps5-1360.elf
 !docs/relapse/payloads/kexp_2026_05_25.bin
+!docs/payloads/elf-launcher.elf
 !docs/payloads/pldmgr.elf
 !docs/payloads/pldmgr.elf.sha256
