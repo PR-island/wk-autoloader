@@ -18,18 +18,18 @@ PS5 jailbreak host on port **1022**.
 
 ## Usage
 
-1. Soft jailbreak; start elfldr on `9021`.
-2. Send `wk-dual-payload.elf`; wait for install/cache.
-3. Open `http://PS5_IP:1022` or Pages.
+1. Soft jailbreak; start [elfldr](https://github.com/ps5-payload-dev/elfldr) on `9021`.
+2. Send the [WK Autoloader ELF](https://github.com/X-F1REBALL-X/wk-autoloader/releases/latest); wait for install/cache.
+3. Open `http://PS5_IP:1022` or [Pages](https://x-f1reball-x.github.io/wk-autoloader/).
 4. Pick Payload Manager or Elf Launcher, then **Start Jailbreak**.
 
 ## Ports
 
 | Port | Role |
 |------|------|
-| **1022** | WK Autoloader |
-| **9021** | elfldr |
-| **8084** | Payload Manager |
+| **1022** | [WK Autoloader](https://github.com/X-F1REBALL-X/wk-autoloader) |
+| **9021** | [elfldr](https://github.com/ps5-payload-dev/elfldr) |
+| **8084** | [Payload Manager](https://github.com/itsPLK/ps5-payload-manager) |
 | **1000** | [Elf Launcher](https://github.com/X-F1REBALL-X/elf-launcher) |
 
 ## Firmware
