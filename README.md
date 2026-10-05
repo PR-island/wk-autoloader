@@ -11,6 +11,7 @@ PS5 homebrew: jailbreak UI on port **1022**. Chains: **umtx2** (1-5.50), **relap
 
 - Repository: https://github.com/X-F1REBALL-X/wk-dual-payload
 - Pages: https://x-f1reball-x.github.io/wk-dual-payload/
+- Download ELF: https://github.com/X-F1REBALL-X/wk-dual-payload/releases/latest
 
 ## What the ELF does
 
