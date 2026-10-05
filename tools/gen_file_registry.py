@@ -179,7 +179,7 @@ def compress_entry(data):
 # Autoload ELF names the splash choice can select. AppCache matches URLs
 # exactly (query included), so every variant must be listed. Keep in sync
 # with buildExploitUrls() in frontend/autoloader/app.js.
-AUTOLOAD_ELF_NAMES = ("payload.elf", "pldmgr.elf", "elf-launcher.elf", "wkal-skip", "wkal-mark.elf", "wkal-companions.elf")
+AUTOLOAD_ELF_NAMES = ("payload.elf", "pldmgr.elf", "wkal-skip", "wkal-mark.elf", "wkal-companions.elf")
 
 
 # p2jb (FW 12.02-12.70, force-only): upstream's canonical production query plus

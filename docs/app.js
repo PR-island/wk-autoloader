@@ -82,22 +82,15 @@
 
   /* Post-JB launcher preference (localStorage). Explicit values only:
        payload-manager -> frontend/autoloader/payloads/pldmgr.elf
-       elf-launcher    -> frontend/autoloader/payloads/elf-launcher.elf
+       elf-launcher    -> open existing :1000 only (never send/bundle ELF)
      Missing, default, or any other value emits wkal-skip so elfldr is
-     sent nothing and Elf Launcher does not open. pldmgr.elf is the
-     standalone itsPLK Payload Manager. payload.elf is the unified
-     autoloader and must not be sent for this choice. elfldr accepts
-     one ELF; do not pre-send a second one when the installer loads. */
+     sent nothing. pldmgr.elf is the standalone itsPLK Payload Manager.
+     payload.elf is the unified autoloader and must not be sent for this
+     choice. elfldr accepts one ELF; do not pre-send a second one when
+     the installer loads. WK never installs or updates Elf Launcher. */
   var LS_LAUNCHER_KEY = 'wkal_postjb_launcher';
   var CHOICE_PAYLOAD_MANAGER = 'payload-manager';
   var CHOICE_ELF_LAUNCHER = 'elf-launcher';
-  /* Generated from payloads/elf-launcher.elf.sha256 by payload-deps.
-     Recorded after a successful send for diagnostics only. elf-launcher.elf
-     is sent only when the splash choice is exactly elf-launcher. */
-  var BUNDLED_ELFLAUNCHER_SHA = '7e3ebb67d2574852224ffac43bb6a346d882188798c558801091db12e9d305b4';
-  var BUNDLED_ELFLAUNCHER_VER = '1.1.1';
-  var LS_ELFLAUNCHER_SHA = 'wkal_elf_launcher_sha';
-  var LS_ELFLAUNCHER_VER = 'wkal_elf_launcher_ver';
   var launcherChoice = null;
 
   function isExplicitLauncherChoice(choice) {
@@ -124,7 +117,8 @@
   }
 
   function autoloadElfName() {
-    if (launcherChoice === CHOICE_ELF_LAUNCHER) return 'elf-launcher.elf';
+    /* Elf Launcher: never send an ELF — only open the installed :1000 page. */
+    if (launcherChoice === CHOICE_ELF_LAUNCHER) return 'wkal-skip';
     if (launcherChoice === CHOICE_PAYLOAD_MANAGER) return 'pldmgr.elf';
     return 'wkal-skip';
   }
@@ -484,7 +478,7 @@
     function lastChanceNavigate(reason) {
       if (opened) return;
       /* elf-launcher: XHR probe often fails (CORS/mixed) while :1000 is up.
-         After send, always replace so WKAL closes and EL opens (itsPLK style). */
+         Always replace so WKAL closes and the installed :1000 page opens. */
       uiLog(label + ' opening :' + portHint + ' (' + reason + ') ...', 'warning');
       opened = true;
       done = true;
@@ -493,14 +487,7 @@
 
     function onGiveUp(reason) {
       if (opened || done) return;
-      if (!autoResendUsed && label === 'elf-launcher') {
-        autoResendUsed = true;
-        uiLog('Auto-retry: re-sending elf-launcher.elf to :9021 ...', 'warning');
-        requestResendAutoload();
-        started = Date.now();
-        setTimeout(attempt, 5000);
-        return;
-      }
+      /* Elf Launcher is open-only (no ELF send/resend). Always navigate. */
       lastChanceNavigate(reason);
     }
 
@@ -603,11 +590,9 @@
   function openElfLauncherPage() {
     if (launcherHttpOpenStarted) return;
     launcherHttpOpenStarted = true;
-    /* elf-launcher also launches a fresh browser to :1000, but WKAL must not
-       rely on that alone — after a successful send, poll until the :1000 UI
-       document is ready then top.location.replace the clean home URL (same as
-       the elf-launcher home icon). Cache-bust query strings break asset loads. */
-    uiLog('elf-launcher sent - opening :1000 when ready ...', 'success');
+    /* Open the already-installed Elf Launcher page on :1000 (home-icon URL).
+       WK never sends or installs elf-launcher.elf. Cache-bust breaks assets. */
+    uiLog('Opening installed Elf Launcher at :1000 ...', 'success');
     openWhenHttpReady(consoleHttpBase(1000), 'elf-launcher', '1000',
       20000, 2500, 800, true);
   }
@@ -635,17 +620,6 @@
        restore the classic full-height log; no-op for the other chains. */
     collapseP2jbStats();
     if (data.ok) {
-      /* Always-send: record bundled SHA after a real non-empty send
-         (diagnostics only - never gates send; WKAL does not install EL). */
-      if (launcherChoice === CHOICE_ELF_LAUNCHER && !data.skipped
-        && Number(data.bytes) > 0) {
-        try {
-          localStorage.setItem(LS_ELFLAUNCHER_SHA, BUNDLED_ELFLAUNCHER_SHA);
-          if (BUNDLED_ELFLAUNCHER_VER) {
-            localStorage.setItem(LS_ELFLAUNCHER_VER, BUNDLED_ELFLAUNCHER_VER);
-          }
-        } catch (eSha) { }
-      }
       if (failMsgEl) {
         try { failMsgEl.hidden = true; failMsgEl.textContent = ''; } catch (e0) { }
       }
@@ -673,12 +647,7 @@
       if (!data.ok) return;
       var sent = !data.skipped && Number(data.bytes) > 0;
       if (launcherChoice === CHOICE_ELF_LAUNCHER) {
-        /* Keep WK light: send elf-launcher.elf, then navigate to the existing
-           :1000 UI (same clean URL as the home icon). Do not embed Elf UI here. */
-        if (!sent) {
-          uiLog('elf-launcher send missing - not opening :1000 yet.', 'warning');
-          return;
-        }
+        /* Open-only: never send elf-launcher.elf; open installed :1000 page. */
         openElfLauncherPage();
       } else if (launcherChoice === CHOICE_PAYLOAD_MANAGER) {
         if (!sent) {
@@ -1471,8 +1440,8 @@
     EXPLOIT_URL = picked === 'umtx2' ? UMTX2_URL
       : picked === 'p2jb' ? P2JB_URL
         : RELAPSE_URL;
-    uiLog('Post-JB launcher: ' + (autoloadName === 'elf-launcher.elf'
-      ? 'elf-launcher (' + autoloadName + ')'
+    uiLog('Post-JB launcher: ' + (launcherChoice === CHOICE_ELF_LAUNCHER
+      ? 'Elf Launcher (open :1000 only, no ELF send)'
       : autoloadName === 'pldmgr.elf'
         ? 'Payload Manager (' + autoloadName + ')'
         : 'none (' + autoloadName + ')'), 'info');

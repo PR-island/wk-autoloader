@@ -66,16 +66,17 @@ else
 fi
 
 # Extra settle after elfldr accepts (Payload Manager panic if too soon).
-# Also register elf-launcher.elf / pldmgr.elf as hidden PAYLOADS entries (not in the base patch).
+# Register mark/companions/pldmgr as hidden PAYLOADS (not in the base patch).
+# Elf Launcher is open-only — do not register elf-launcher.elf.
 python3 "$ROOT/tools/slopkit_autoload_settle.py" "$DEST"
 python3 "$ROOT/tools/slopkit_autoload_elf_launcher.py" "$DEST"
 python3 "$ROOT/tools/autoload_resend_listener.py" "$DEST"
 python3 "$ROOT/tools/autoload_single_flight.py" "$DEST"
 python3 "$ROOT/tools/slopkit_autoload_wkal_mark.py" "$DEST"
 python3 "$ROOT/tools/slopkit_autoload_on_ready.py" "$DEST"
-# 0.2.21: inject elf-launcher immediately on STAGE5-DONE / elfldr ready
-# (same as p2jb showWin); settle ~150ms after elfldrAccepting(); Sent flag
-# blocks STAGE5+ladder double-send; resend clears Sent.
+# STAGE5-DONE / elfldr ready injects chosen autoload (pldmgr or wkal-skip);
+# settle ~150ms after elfldrAccepting(); Sent flag blocks STAGE5+ladder
+# double-send; resend clears Sent. Elf Launcher uses wkal-skip (open :1000).
 
 # 4. Sanity check: the patched pages must carry our integration markers.
 #    Catches a silently truncated/empty patch. These markers only exist when
@@ -83,8 +84,8 @@ python3 "$ROOT/tools/slopkit_autoload_on_ready.py" "$DEST"
 if ! grep -q 'sendPayloadToElfldr(cfg.autoload, "../../payloads/"' slopkit/poops.html \
     || ! grep -q 'if (key === "autoload") return;' slopkit/poops.html \
     || ! grep -q 'name: "payload.elf"' slopkit/poops.html \
-    || ! grep -q 'name: "elf-launcher.elf"' slopkit/poops.html \
-    || ! grep -q 'name: "elf-launcher.elf"' slopkit/p2jb.html \
+    || grep -q 'name: "elf-launcher.elf"' slopkit/poops.html \
+    || grep -q 'name: "elf-launcher.elf"' slopkit/p2jb.html \
     || ! grep -q 'name: "pldmgr.elf"' slopkit/poops.html \
     || ! grep -q 'name: "pldmgr.elf"' slopkit/p2jb.html \
     || ! grep -q '"url=../../shared/" + name' slopkit/poops.js \
@@ -113,7 +114,7 @@ if ! grep -q 'sendPayloadToElfldr(cfg.autoload, "../../payloads/"' slopkit/poops
     exit 1
 fi
 echo "slopkit: patch verification OK (autoload block + probe-path autoload,"
-echo "         exactQuery relaxation, hidden payload.elf + elf-launcher.elf + pldmgr.elf tiles, shared elfldr"
+echo "         exactQuery relaxation, hidden payload.elf + pldmgr.elf tiles (no elf-launcher.elf), shared elfldr"
 echo "         on poops + p2jb; STAGE5-DONE on-ready; settle 150ms; Sent single-flight)."
 
 

@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # Release tree marker: v1.0.0
 # Download the shared ps5-elfldr ELF, the ps5-unified-autoloader payload
-# ELF, the Payload Manager ELF, and the optional elf-launcher ELF from
-# their GitHub releases.
+# ELF, and the Payload Manager ELF from their GitHub releases.
+# Elf Launcher is NOT bundled or fetched — WK only opens the installed :1000 page.
 #
 #   third_party/ps5-elfldr             -> frontend/autoloader/shared/elfldr-ps5.elf
 #   third_party/ps5-unified-autoloader -> frontend/autoloader/payloads/payload.elf
 #   itsPLK/ps5-payload-manager@v0.5.1  -> frontend/autoloader/payloads/pldmgr.elf
-#   X-F1REBALL-X/elf-launcher@1.1.1  -> frontend/autoloader/payloads/elf-launcher.elf
 #
 # The shared elfldr is used by the slopkit chain (7.00-12.00); umtx2
 # (1.00-5.50) boots its own elfldr from the umtx2 submodule, like stock umtx2.
@@ -60,27 +59,8 @@ PLDMGR_LOCAL_CANDIDATES=(
     "$ROOT/../wk-autoloader-relapse/frontend/autoloader/payloads/pldmgr.elf"
 )
 
-# Optional post-JB launcher (elf-launcher HTTP :1000, Kill APIs). Pinned
-# release; local sibling copies under /workspace/elf-launcher* win when present.
-ELFLAUNCHER_REPO="X-F1REBALL-X/elf-launcher"
-ELFLAUNCHER_TAG="1.1.1"
-# Current console binary. Always send it. A live :1000 is not a skip:
-# the ELF applies Open or Leave closed and loads Auto when closed.
-# Prefer launcher/elf-launcher.elf (current HOME_ICON_VERSION) over stale docs/launcher trees.
-ELFLAUNCHER_PINNED_SHA=7e3ebb67d2574852224ffac43bb6a346d882188798c558801091db12e9d305b4
-ELFLAUNCHER_DEST="$ROOT/frontend/autoloader/payloads/elf-launcher.elf"
-ELFLAUNCHER_LOCAL_CANDIDATES=(
-    "$ROOT/docs/payloads/elf-launcher.elf"
-    "/workspace/elf-launcher/launcher/elf-launcher.elf"
-    "/workspace/elf-launcher/host/hbinstall/elf-launcher-install.elf"
-    "$ROOT/../elf-launcher/launcher/elf-launcher.elf"
-    "$ROOT/../elf-launcher/host/hbinstall/elf-launcher-install.elf"
-    "/workspace/elf-launcher-blue/launcher/elf-launcher.elf"
-    "/workspace/elf-launcher-blue/host/hbinstall/elf-launcher-install.elf"
-    "/workspace/elf-launcher-blue/docs/launcher/elf-launcher.elf"
-    "$ROOT/../elf-launcher-blue/launcher/elf-launcher.elf"
-    "$ROOT/../elf-launcher-blue/docs/launcher/elf-launcher.elf"
-)
+# Elf Launcher ELF is intentionally NOT fetched or bundled. Splash choice
+# "elf-launcher" only opens the already-installed HTTP UI on :1000.
 
 # Fetch the pinned release, verify the payload, and download it if needed.
 # Exit codes: 0 = asset ready, 3 = already present and verified.
@@ -278,36 +258,6 @@ if [ -f "$PLDMGR_DEST" ]; then
   printf '%s %s\n' "$PLDMGR_TAG" "$PLDMGR_SHA" > "$PLDMGR_DEST.sha256"
 fi
 
-# Prefer the local elf-launcher only when it is newer than the bundled copy.
-# This lets a freshly built sibling ELF flow into the installer without
-# downgrading a newer bundled release just because the sibling exists.
-elflauncher_from_local() {
-    local src sha
-    for src in "${ELFLAUNCHER_LOCAL_CANDIDATES[@]}"; do
-        if [ -f "$src" ]; then
-            sha=$(sha256sum "$src" | awk '{print $1}')
-            if [ -n "$ELFLAUNCHER_PINNED_SHA" ] && [ "$sha" != "$ELFLAUNCHER_PINNED_SHA" ]; then
-                echo "elf-launcher: skip $src (sha $sha != pinned $ELFLAUNCHER_PINNED_SHA)"
-                continue
-            fi
-            mkdir -p "$(dirname "$ELFLAUNCHER_DEST")"
-            cp -f "$src" "$ELFLAUNCHER_DEST"
-            echo "elf-launcher: pinned local copy $src -> $ELFLAUNCHER_DEST"
-            return 0
-        fi
-    done
-    # Keep existing dest only when it already matches the pinned sha.
-    if [ -f "$ELFLAUNCHER_DEST" ]; then
-        sha=$(sha256sum "$ELFLAUNCHER_DEST" | awk '{print $1}')
-        if [ -z "$ELFLAUNCHER_PINNED_SHA" ] || [ "$sha" = "$ELFLAUNCHER_PINNED_SHA" ]; then
-            echo "elf-launcher: keeping verified bundled $ELFLAUNCHER_DEST"
-            return 0
-        fi
-        echo "elf-launcher: bundled sha $sha is not pinned; will re-fetch"
-    fi
-    return 1
-}
-
 # WK prelude mark: local sibling only (never fetched from GitHub).
 WKAL_MARK_DEST="$ROOT/frontend/autoloader/payloads/wkal-mark.elf"
 WKAL_MARK_LOCAL_CANDIDATES=(
@@ -326,28 +276,11 @@ for src in "${WKAL_MARK_LOCAL_CANDIDATES[@]}"; do
     fi
 done
 
-if ! elflauncher_from_local; then
-  download_release "$ELFLAUNCHER_REPO" "$ELFLAUNCHER_TAG" "$ELFLAUNCHER_DEST" || {
-    if [ -f "$ELFLAUNCHER_DEST" ]; then
-      echo "warning: elf-launcher download failed; keeping existing $ELFLAUNCHER_DEST"
-    else
-      echo "Error: elf-launcher.elf missing (no local copy, download failed)." >&2
-      exit 1
-    fi
-  }
-fi
+# No elf-launcher.elf fetch — open-only :1000 from app.js.
 
-# Always canonicalize this sidecar from the bytes actually bundled. The
-# frontend metadata updater accepts both the historical '<tag> <sha>' form and
-# a bare hash, but this keeps fresh local copies deterministic.
-if [ -f "$ELFLAUNCHER_DEST" ]; then
-  ELFLAUNCHER_SHA=$(sha256sum "$ELFLAUNCHER_DEST" | awk '{print $1}')
-  # Bare hash when untagged (no stamp); else "<tag> <sha>".
-  if [ -n "$ELFLAUNCHER_TAG" ]; then
-    printf '%s %s\n' "$ELFLAUNCHER_TAG" "$ELFLAUNCHER_SHA" > "$ELFLAUNCHER_DEST.sha256"
-  else
-    printf '%s\n' "$ELFLAUNCHER_SHA" > "$ELFLAUNCHER_DEST.sha256"
-  fi
-  python3 "$ROOT/tools/update_elf_launcher_metadata.py"
-fi
-
+# Ensure no stale bundled Elf Launcher ELF remains.
+rm -f "$ROOT/frontend/autoloader/payloads/elf-launcher.elf" \
+      "$ROOT/frontend/autoloader/payloads/elf-launcher.elf.sha256" \
+      "$ROOT/docs/payloads/elf-launcher.elf" \
+      "$ROOT/docs/payloads/elf-launcher.elf.sha256"
+echo "elf-launcher: not bundled (open :1000 only)"

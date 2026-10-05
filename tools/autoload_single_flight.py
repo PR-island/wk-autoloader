@@ -48,7 +48,7 @@ POOPS_NEW = f"""async function startAutoload() {{
         return;
     }}
     if (cfg.autoload === "wkal-skip") {{
-        stage("elf-launcher already on :1000 - not sending", "ok");
+        stage("wkal-skip - not sending post-JB ELF", "ok");
         try {{ window.parent.postMessage({{ type: "wkal", kind: "autoload", ok: true, bytes: 0, skipped: true }}, "*"); }} catch (e) {{ }}
         return;
     }}
@@ -138,7 +138,7 @@ P2JB_NEW = f"""async function startAutoload() {{
         return;
     }}
     if (AUTOLOAD === "wkal-skip") {{
-        stage("elf-launcher already on :1000 - not sending", "ok");
+        stage("wkal-skip - not sending post-JB ELF", "ok");
         try {{ window.parent.postMessage({{ type: "wkal", kind: "autoload", ok: true, bytes: 0, skipped: true }}, "*"); }} catch (e) {{ }}
         return;
     }}
