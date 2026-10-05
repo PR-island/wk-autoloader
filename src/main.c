@@ -192,7 +192,7 @@ int main(void) {
 
     if (NULL == daemon) {
         wkali_log("[WKALI] Failed to start HTTP daemon!\n");
-        wkali_notify("WK Dual Payload Installer: Error\nHTTP server failed to start");
+        wkali_notify("WK Autoloader Installer: Error\nHTTP server failed to start");
         return 1;
     }
 
@@ -212,7 +212,7 @@ int main(void) {
 
     if (wkali_page_installed()) {
         wkali_log("[WKALI] Page already installed. Skipping browser and install.\n");
-        wkali_notify("WK Dual Payload already installed");
+        wkali_notify("WK Autoloader already installed");
         return 0;
     }
 
@@ -231,7 +231,7 @@ int main(void) {
     while (atomic_load(&http_keep_running)) {
         if (!install_notified && atomic_load(&install_completed)) {
             install_notified = 1;
-            wkali_notify("WK Dual Payload cached successfully!");
+            wkali_notify("WK Autoloader cached successfully!");
             wkali_log("[WKALI] Install complete — server stays on :%d for UI/home icon\n",
                       WKALI_PORT);
         }

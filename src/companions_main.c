@@ -1,5 +1,5 @@
 /*
- * Post-jailbreak companion installer for WK Dual Payload.
+ * Post-jailbreak companion installer for WK Autoloader.
  *
  * Sent to elfldr after JB. Installs the Elf Launcher and Payload Manager
  * homescreen pages only when each is missing, then exits. Does not start

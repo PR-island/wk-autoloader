@@ -1,5 +1,5 @@
 #!/bin/bash
-# WK Dual Payload - Automated Build & Deploy Script
+# WK Autoloader - Automated Build & Deploy Script
 # Release tree marker: v1.0.0
 
 if [ -z "$1" ]; then
@@ -13,7 +13,7 @@ BUILD_ELF="installer.elf"
 ELF="wk-dual-payload.elf"
 IMAGE_NAME="ps5-webkit-autoloader-sdk"
 
-echo "--- Deploying WK Dual Payload to $PS5_IP ---"
+echo "--- Deploying WK Autoloader to $PS5_IP ---"
 
 # 1. Build/verify the docker image
 if [[ "$(docker images -q $IMAGE_NAME 2> /dev/null)" == "" ]]; then

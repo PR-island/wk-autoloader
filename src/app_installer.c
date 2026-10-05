@@ -120,12 +120,12 @@ int wkali_install_app(void) {
   if (wkali_page_installed()) {
     wkali_log("[WKALI] Page already installed (%s). Not installing again.\n",
               title_id);
-    wkali_notify("WK Dual Payload already installed");
+    wkali_notify("WK Autoloader already installed");
     return 0;
   }
 
   wkali_log("[WKALI] Installing browser launcher app (%s)...\n", title_id);
-  wkali_notify("Installing WK Dual Payload...");
+  wkali_notify("Installing WK Autoloader...");
 
   int err;
   if ((err = sceAppInstUtilInitialize())) {
@@ -161,7 +161,7 @@ int wkali_install_app(void) {
   }
 
   wkali_log("[WKALI] Launcher app installed successfully.\n");
-  wkali_notify("WK Dual Payload Ready!");
+  wkali_notify("WK Autoloader Ready!");
 
   sceAppInstUtilTerminate();
   return 0;
