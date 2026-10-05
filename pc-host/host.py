@@ -116,7 +116,7 @@ def build_credits():
             "",
             "   ┌" + "─" * width + "┐",
             row("THIS PROJECT IS FREE & OPEN SOURCE"),
-            row("github.com/X-F1REBALL-X/PS5-WebKit-Autoloader"),
+            row("github.com/X-F1REBALL-X/wk-autoloader"),
             "   └" + "─" * width + "┘",
         ]
     )
@@ -145,9 +145,9 @@ class UpdateChecker:
     screen. All failures are silent - the notice is best-effort only.
     """
 
-    API_URL = "https://api.github.com/repos/X-F1REBALL-X/PS5-WebKit-Autoloader/releases/latest"
-    RELEASES_URL = "https://github.com/X-F1REBALL-X/PS5-WebKit-Autoloader/releases"
-    USER_AGENT = "ps5-webkit-autoloader-host"
+    API_URL = "https://api.github.com/repos/X-F1REBALL-X/wk-autoloader/releases/latest"
+    RELEASES_URL = "https://github.com/X-F1REBALL-X/wk-autoloader/releases"
+    USER_AGENT = "wk-autoloader-host"
     TIMEOUT = 3
 
     def __init__(self, version):

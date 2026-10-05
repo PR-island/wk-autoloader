@@ -1456,6 +1456,7 @@
   }
 
   function start() {
+    hideSelfUpdateBanner();
     /* Explicit splash choice only. Anything else is wkal-skip.
        Elf Launcher Hybrid: probe :1000 first — up => open-only; down => send tip. */
     launcherHttpOpenStarted = false;
@@ -1696,6 +1697,219 @@
     if (auto && auto.checked) startAutoCountdown();
   }
 
+  /* ---- Self-update banner (Elf Launcher style) ----
+     Compares the running UI version (baked into #appVer / .splash-ver by the
+     build; docs/ Pages hardcodes it) with GitHub Releases latest. Update on a
+     PS5 asks elfldr :9021 to pull the installer ELF by URL; elsewhere it opens
+     the release download. "Later" remembers the dismissed version. */
+  var SELFUPD_DISMISS_KEY = 'wkal-selfupd-dismiss';
+  var SELFUPD_GH_LATEST = 'https://api.github.com/repos/X-F1REBALL-X/wk-autoloader/releases/latest';
+  var SELFUPD_RELEASES_URL = 'https://github.com/X-F1REBALL-X/wk-autoloader/releases/latest';
+  var SELFUPD_ASSET = 'wk-dual-payload.elf';
+  var selfUpdateInfo = null;
+  var selfUpdateMsgTimer = 0;
+
+  function semverParts(v) {
+    v = String(v || '').replace(/^\s+|\s+$/g, '').replace(/^[vV]/, '');
+    var m = /^(\d+)\.(\d+)(?:\.(\d+))?/.exec(v);
+    if (!m) return null;
+    return [parseInt(m[1], 10) || 0, parseInt(m[2], 10) || 0, parseInt(m[3] || '0', 10) || 0];
+  }
+
+  /* Base semver compare; -dev / -pre suffixes are ignored. */
+  function cmpSemver(a, b) {
+    var A = semverParts(a) || [0, 0, 0];
+    var B = semverParts(b) || [0, 0, 0];
+    var i;
+    for (i = 0; i < 3; i++) {
+      if (A[i] > B[i]) return 1;
+      if (A[i] < B[i]) return -1;
+    }
+    return 0;
+  }
+
+  /* Running app version, or '' when the page is unbuilt (placeholder). */
+  function currentAppVersion() {
+    var ids = ['appVer'], el, txt, i, parts;
+    var sv = document.querySelector ? document.querySelector('.splash-ver') : null;
+    for (i = 0; i < ids.length; i++) {
+      el = document.getElementById(ids[i]);
+      txt = el ? String(el.textContent || '') : '';
+      parts = semverParts(txt);
+      if (parts) return parts.join('.');
+    }
+    txt = sv ? String(sv.textContent || '') : '';
+    parts = semverParts(txt);
+    return parts ? parts.join('.') : '';
+  }
+
+  function hideSelfUpdateBanner() {
+    var box = document.getElementById('selfupd');
+    if (box) box.classList.remove('show');
+    if (selfUpdateMsgTimer) { clearTimeout(selfUpdateMsgTimer); selfUpdateMsgTimer = 0; }
+  }
+
+  function setSelfUpdateDir(box) {
+    var info = null;
+    try {
+      if (window.WKAL_I18N && window.WKAL_I18N.langInfo) {
+        info = window.WKAL_I18N.langInfo(window.WKAL_I18N.getLang());
+      }
+    } catch (e) { }
+    if (info && info.rtl) box.setAttribute('dir', 'rtl');
+    else box.removeAttribute('dir');
+  }
+
+  function paintSelfUpdateBanner() {
+    var box = document.getElementById('selfupd');
+    var txt = document.getElementById('selfupdtxt');
+    var dl = document.getElementById('selfupddl');
+    var dx = document.getElementById('selfupdx');
+    if (!box || !txt || !selfUpdateInfo) return;
+    setSelfUpdateDir(box);
+    txt.textContent = t('selfUpdate', { ver: selfUpdateInfo.version });
+    if (dl) dl.textContent = t('update');
+    if (dx) dx.textContent = t('selfUpdateLater');
+  }
+
+  function showSelfUpdateBanner(info) {
+    var box = document.getElementById('selfupd');
+    var dl = document.getElementById('selfupddl');
+    if (!box || !info || !info.version) return;
+    selfUpdateInfo = info;
+    paintSelfUpdateBanner();
+    if (dl) dl.disabled = false;
+    box.classList.add('show');
+  }
+
+  function selfUpdateMessage(text, hideAfterMs) {
+    var txt = document.getElementById('selfupdtxt');
+    if (txt) txt.textContent = text;
+    uiLog('[update] ' + text, 'info');
+    if (selfUpdateMsgTimer) { clearTimeout(selfUpdateMsgTimer); selfUpdateMsgTimer = 0; }
+    if (hideAfterMs) selfUpdateMsgTimer = setTimeout(hideSelfUpdateBanner, hideAfterMs);
+  }
+
+  function rememberSelfUpdateDismiss(ver) {
+    try { localStorage.setItem(SELFUPD_DISMISS_KEY, String(ver || '')); } catch (e) { }
+  }
+
+  function dismissSelfUpdate() {
+    if (selfUpdateInfo && selfUpdateInfo.version) rememberSelfUpdateDismiss(selfUpdateInfo.version);
+    hideSelfUpdateBanner();
+  }
+
+  function fetchJsonText(url, cb) {
+    var done = false;
+    function fin(err, text) { if (done) return; done = true; cb(err, text); }
+    if (typeof fetch === 'function') {
+      fetch(url, { cache: 'no-store' })
+        .then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.text();
+        })
+        .then(function (text) { fin(null, text); })
+        .catch(function (e) { fin(e || new Error('fetch failed')); });
+      return;
+    }
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.timeout = 8000;
+      xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) fin(null, xhr.responseText);
+        else fin(new Error('HTTP ' + xhr.status));
+      };
+      xhr.onerror = function () { fin(new Error('network')); };
+      xhr.ontimeout = function () { fin(new Error('timeout')); };
+      xhr.send();
+    } catch (e2) { fin(e2); }
+  }
+
+  /* GitHub Releases latest -> banner when newer than the running UI. */
+  function checkSelfUpdate() {
+    var cur = currentAppVersion();
+    if (!cur || chainStarted) return;
+    fetchJsonText(SELFUPD_GH_LATEST, function (err, text) {
+      var j, tag, assets, i, a, url = '', dismissed = '';
+      if (err || chainStarted) return;
+      try { j = JSON.parse(text); } catch (e) { return; }
+      if (!j || j.draft || j.prerelease) return;
+      tag = String(j.tag_name || j.name || '').replace(/^\s+|\s+$/g, '').replace(/^[vV]/, '');
+      if (!semverParts(tag) || cmpSemver(tag, cur) <= 0) { hideSelfUpdateBanner(); return; }
+      assets = j.assets || [];
+      for (i = 0; i < assets.length; i++) {
+        a = assets[i] || {};
+        if (String(a.name || '').toLowerCase() === SELFUPD_ASSET) { url = a.browser_download_url || ''; break; }
+      }
+      if (!url) {
+        for (i = 0; i < assets.length; i++) {
+          a = assets[i] || {};
+          if (/^wk-dual-payload.*\.elf$/i.test(String(a.name || ''))) { url = a.browser_download_url || ''; break; }
+        }
+      }
+      try { dismissed = localStorage.getItem(SELFUPD_DISMISS_KEY) || ''; } catch (e2) { }
+      if (dismissed && cmpSemver(dismissed, tag) >= 0) return;
+      showSelfUpdateBanner({
+        version: semverParts(tag).join('.'),
+        tag: tag,
+        url: url,
+        page: j.html_url || SELFUPD_RELEASES_URL
+      });
+    });
+  }
+
+  function sendUrlToElfldr(fileUrl, cb) {
+    var target = 'http://127.0.0.1:9021/?uri=' + encodeURIComponent(fileUrl);
+    var done = false;
+    function fin(ok) { if (done) return; done = true; cb(ok); }
+    /* http pages (:1022 / PC host) can confirm with fetch; https Pages uses an
+       image ping like Elf Launcher (mixed-content safe, unconfirmed). */
+    if (location.protocol === 'http:' && typeof fetch === 'function') {
+      fetch(target, { method: 'GET', mode: 'no-cors', cache: 'no-store' })
+        .then(function () { fin(true); })
+        .catch(function () { fin(false); });
+      setTimeout(function () { fin(true); }, 6000);
+      return;
+    }
+    var img = new Image();
+    img.onload = function () { fin(true); };
+    img.onerror = function () { fin(true); };
+    img.src = target;
+    setTimeout(function () { fin(true); }, 1500);
+  }
+
+  function downloadSelfUpdate() {
+    var info = selfUpdateInfo;
+    var btn = document.getElementById('selfupddl');
+    if (!info) return;
+    if (/PlayStation/i.test(navigator.userAgent) && info.url) {
+      if (btn) btn.disabled = true;
+      selfUpdateMessage(t('selfUpdating', { ver: info.version }));
+      sendUrlToElfldr(info.url, function (ok) {
+        if (btn) btn.disabled = false;
+        if (ok) {
+          rememberSelfUpdateDismiss(info.version);
+          selfUpdateMessage(t('selfUpdated', { ver: info.version }), 8000);
+        } else {
+          selfUpdateMessage(t('selfUpdateFail', { msg: t('selfUpdateNoElfldr') }));
+        }
+      });
+      return;
+    }
+    try { window.open(info.url || info.page || SELFUPD_RELEASES_URL, '_blank'); } catch (e) { }
+    rememberSelfUpdateDismiss(info.version);
+    selfUpdateMessage(t('selfUpdateOpened', { ver: info.version }), 6000);
+  }
+
+  function bindSelfUpdateUi() {
+    var dl = document.getElementById('selfupddl');
+    var dx = document.getElementById('selfupdx');
+    if (dl) dl.onclick = function () { downloadSelfUpdate(); return false; };
+    if (dx) dx.onclick = function () { dismissSelfUpdate(); return false; };
+    setTimeout(checkSelfUpdate, 900);
+  }
+
   /* Wait for the user to pick Payload Manager vs elf-launcher on the splash
      before arming the exploit. A saved Auto-start preference arms a short
      cancellable countdown instead. */
@@ -1708,6 +1922,7 @@
       go.textContent = t('startJailbreak');
     }
     if (cancel) cancel.textContent = t('cancel');
+    if (selfUpdateInfo) paintSelfUpdateBanner();
     if (elapsedMsgEl && !elapsedTimer) {
       elapsedMsgEl.textContent = t('elapsed', { t: '0:00' });
     }
@@ -1718,5 +1933,6 @@
       window.WKAL_I18N.bindLangUi();
     }
     bindLauncherChoiceUi();
+    bindSelfUpdateUi();
   });
 })();

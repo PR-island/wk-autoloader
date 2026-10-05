@@ -3,6 +3,17 @@
 
   /* Release tree marker: v1.0.2. */
 
+  /* i18n: prefer WKAL_I18N.t from i18n.js; fall back to English key text. */
+  function t(key, vars) {
+    if (typeof window !== 'undefined' && window.WKAL_I18N && typeof window.WKAL_I18N.t === 'function') {
+      return window.WKAL_I18N.t(key, vars);
+    }
+    return key;
+  }
+  function elapsedLabel(ms) {
+    return t('elapsed', { t: formatElapsed(ms) });
+  }
+
   var splashEl = document.getElementById('splash');
   var loaderEl = document.getElementById('loader');
   var logContainer = document.getElementById('logContainer');
@@ -97,7 +108,7 @@
   var CHOICE_ELF_LAUNCHER = 'elf-launcher';
   /* Generated from payloads/elf-launcher.elf.sha256 by payload-deps.
      Diagnostics only after a successful hybrid-down send. */
-  var BUNDLED_ELFLAUNCHER_SHA = '93082ac6df4320078cf86f4e3417c6a75a30eb99a6b14de9d0da1f0fdc818412';
+  var BUNDLED_ELFLAUNCHER_SHA = 'd9da57df57e3e49dc2ca2ebc7f73bbc98bf16021eaeccb83e836801ddf46b71f';
   var BUNDLED_ELFLAUNCHER_VER = 'tip';
   var launcherChoice = null;
   var elfHttpAlreadyUp = false;
@@ -243,10 +254,10 @@
   function startElapsed() {
     if (elapsedTimer) return;
     elapsedStart = Date.now();
-    if (elapsedMsgEl) elapsedMsgEl.textContent = 'Elapsed 0:00';
+    if (elapsedMsgEl) elapsedMsgEl.textContent = t('elapsed', { t: '0:00' });
     elapsedTimer = setInterval(function () {
       if (!elapsedMsgEl) return;
-      var elapsedText = 'Elapsed ' + formatElapsed(Date.now() - elapsedStart);
+      var elapsedText = t('elapsed', { t: formatElapsed(Date.now() - elapsedStart) });
       if (elapsedMsgEl.textContent !== elapsedText) elapsedMsgEl.textContent = elapsedText;
     }, 1000);
   }
@@ -263,10 +274,10 @@
   function setMeta(fwStr, chain) {
     if (!metaMsgEl) return;
     if (chain === 'research_ul' || chain === 'userland only') {
-      metaMsgEl.textContent = 'FW ' + (fwStr || '-') + ' · not supported';
+      metaMsgEl.textContent = t('metaFwUnsupported', { fw: fwStr || '-' });
       return;
     }
-    metaMsgEl.textContent = 'FW ' + (fwStr || '-') + ' · chain ' + formatChainLabel(chain);
+    metaMsgEl.textContent = t('metaFwChain', { fw: fwStr || '-', chain: formatChainLabel(chain) });
   }
 
   function finishProgressSuccess(message) {
@@ -284,12 +295,12 @@
       updateProgress(Math.floor(from + (100 - from) * p));
       if (p >= 1) {
         try { clearInterval(anim); } catch (eA) {}
-        updateProgress(100, message || 'Jailbreak completed successfully');
+        updateProgress(100, message || t('jailbreakSuccess'));
       }
     }, 30);
     try { document.body.className = 'done'; } catch (e) {}
     if (successMsgEl) {
-      successMsgEl.innerHTML = '<span class="check" aria-hidden="true"></span>Jailbreak completed successfully';
+      successMsgEl.innerHTML = '<span class="check" aria-hidden="true"></span>' + t('jailbreakSuccess');
     }
   }
 
@@ -302,10 +313,10 @@
     }
     try { document.body.className = 'fail'; } catch (e) {}
     if (failMsgEl) {
-      failMsgEl.textContent = message || 'Jailbreak failed - restart your console';
+      failMsgEl.textContent = message || t('jailbreakFail');
     }
     if (statusMsgEl) statusMsgEl.style.display = 'none';
-    uiLog(message || 'Jailbreak failed - restart your console', 'error');
+    uiLog(message || t('jailbreakFail'), 'error');
   }
 
   window.uiLog = uiLog;
@@ -461,24 +472,23 @@
         + ' the ELF then reopens :' + portHint + '.', 'warning');
       if (statusMsgEl) {
         try {
-          statusMsgEl.textContent = label + ' page not open yet - Retry below';
+          statusMsgEl.textContent = t('pageNotOpen', { label: label });
         } catch (eS) { }
       }
       if (successMsgEl) {
         try {
           successMsgEl.hidden = false;
-          successMsgEl.textContent = 'JB OK. ' + label
-            + ' did not answer on :' + portHint + ' in time.';
+          successMsgEl.textContent = t('jbOkNoAnswer', { label: label, port: portHint });
         } catch (eOk) { }
       }
       try {
         var btn = document.createElement('button');
         btn.type = 'button';
-        btn.textContent = 'Retry send + open ' + label + ' (:' + portHint + ')';
+        btn.textContent = t('retrySendOpen', { label: label, port: portHint });
         btn.style.cssText = 'display:block;margin:8px 0;padding:8px 12px;'
           + 'font-size:14px;cursor:pointer;';
         btn.onclick = function () {
-          try { btn.disabled = true; btn.textContent = 'Re-sending...'; } catch (eB) { }
+          try { btn.disabled = true; btn.textContent = t('resending'); } catch (eB) { }
           requestResendAutoload();
           setTimeout(function () {
             openWhenHttpReady(url, label, portHint, maxWaitMs, 3000, settle, false);
@@ -618,7 +628,13 @@
     launcherHttpOpenStarted = true;
     /* Home-icon URL (no cache-bust) — query strings break Elf Launcher assets. */
     if (elfHttpAlreadyUp) {
-      uiLog('Elf Launcher :1000 already up - opening (no ELF send) ...', 'success');
+      uiLog('Elf Launcher :1000 already up - trigger Auto then open ...', 'success');
+      /* Open-only Hybrid never re-sends ELF; ask live :1000 to run disk Auto. */
+      try {
+        fetch('http://127.0.0.1:1000/trigger-auto?t=' + Date.now(), {
+          method: 'GET', mode: 'no-cors', cache: 'no-store'
+        }).catch(function () {});
+      } catch (eTrig) {}
       openWhenHttpReady(consoleHttpBase(1000), 'elf-launcher', '1000',
         12000, 400, 400, false);
     } else {
@@ -665,14 +681,14 @@
       }
       /* Mark JB done BEFORE waiting on HTTP open - open timeout must not
          look like a stuck jailbreak. */
-      finishProgressSuccess('Jailbreak completed successfully');
+      finishProgressSuccess(t('jailbreakSuccess'));
 
       /* Keep exploit iframe alive until HTTP open / resend finishes.
          Never blank it before top.location.replace — clearing mid-payload
          crashes WebKit. Navigation tears the page down after :1000/:8084 ready. */
     } else {
       uiLog('[ERROR] Autoload failed: ' + (data.why || 'unknown error'), 'error');
-      finishProgressFail('Jailbreak failed - restart your console');
+      finishProgressFail(t('jailbreakFail'));
     }
     setTimeout(function () {
       if (!data.ok) return;
@@ -837,7 +853,7 @@
            transient FAIL in stage text would block opening :1000/:8084. */
         if (!finished && !autoloadPending) {
           finished = true;
-          finishProgressFail('Jailbreak failed - restart your console');
+          finishProgressFail(t('jailbreakFail'));
         }
       } else if (/jailbreak completed|completed successfully|elf loader ready/i.test(st)) {
         uiLog('[stage] ' + lastStageText, 'success');
@@ -1440,6 +1456,7 @@
   }
 
   function start() {
+    hideSelfUpdateBanner();
     /* Explicit splash choice only. Anything else is wkal-skip.
        Elf Launcher Hybrid: probe :1000 first — up => open-only; down => send tip. */
     launcherHttpOpenStarted = false;
@@ -1463,8 +1480,8 @@
 
   function startChain(skipElfSend) {
     uiLog('WK Autoloader by X-F1REBALL-X', 'success');
-    if (statusMsgEl) statusMsgEl.textContent = 'Jailbreak started';
-    updateProgress(0, 'Jailbreak started');
+    if (statusMsgEl) statusMsgEl.textContent = t('jailbreakStarted');
+    updateProgress(0, t('jailbreakStarted'));
     startProgressDriver();
     startElapsed();
 
@@ -1487,7 +1504,7 @@
     var picked = pickExploit();
     if (!picked) {
       setMeta(fw ? fw.str : '-', 'unsupported');
-      finishProgressFail('Jailbreak failed - restart your console');
+      finishProgressFail(t('jailbreakFail'));
       return;
     }
     exploitMode = picked;
@@ -1556,7 +1573,7 @@
     if (!el) return;
     var fw = detectFirmware();
     if (!fw) {
-      el.textContent = 'Console not detected';
+      el.textContent = t('consoleNotDetected');
       el.className = 'detect-title unsupported';
       return;
     }
@@ -1566,10 +1583,10 @@
     else if (RELAPSE_FIRMWARES.indexOf(fw.str) !== -1
       || (fw.num >= 7.0 && fw.num <= 13.60)) chain = 'relapse';
     if (chain) {
-      el.textContent = 'PS5 FW ' + fw.str + ' · chain ' + formatChainLabel(chain);
+      el.textContent = t('fwChain', { fw: fw.str, chain: formatChainLabel(chain) });
       el.className = 'detect-title';
     } else {
-      el.textContent = 'PS5 FW ' + fw.str + ' · not supported';
+      el.textContent = t('fwUnsupported', { fw: fw.str });
       el.className = 'detect-title unsupported';
     }
   }
@@ -1611,7 +1628,7 @@
       }
       if (go && !chainStarted) {
         go.disabled = false;
-        go.textContent = 'Start Jailbreak';
+        go.textContent = t('startJailbreak');
       }
       if (cancel) cancel.hidden = true;
     }
@@ -1620,7 +1637,7 @@
       if (chainStarted || autoTimer || !go) return;
       autoRemaining = 3;
       go.disabled = true;
-      go.textContent = 'Starting in ' + autoRemaining + '\u2026';
+      go.textContent = t('startingIn', { n: autoRemaining });
       if (cancel) cancel.hidden = false;
       autoTimer = setInterval(function () {
         autoRemaining -= 1;
@@ -1628,12 +1645,12 @@
           clearInterval(autoTimer);
           autoTimer = 0;
           if (cancel) cancel.hidden = true;
-          go.textContent = 'Starting\u2026';
+          go.textContent = t('starting');
           saveLauncherChoice(launcherChoice);
           start();
           return;
         }
-        go.textContent = 'Starting in ' + autoRemaining + '\u2026';
+        go.textContent = t('startingIn', { n: autoRemaining });
       }, 1000);
     }
 
@@ -1680,8 +1697,242 @@
     if (auto && auto.checked) startAutoCountdown();
   }
 
+  /* ---- Self-update banner (Elf Launcher style) ----
+     Compares the running UI version (baked into #appVer / .splash-ver by the
+     build; docs/ Pages hardcodes it) with GitHub Releases latest. Update on a
+     PS5 asks elfldr :9021 to pull the installer ELF by URL; elsewhere it opens
+     the release download. "Later" remembers the dismissed version. */
+  var SELFUPD_DISMISS_KEY = 'wkal-selfupd-dismiss';
+  var SELFUPD_GH_LATEST = 'https://api.github.com/repos/X-F1REBALL-X/wk-autoloader/releases/latest';
+  var SELFUPD_RELEASES_URL = 'https://github.com/X-F1REBALL-X/wk-autoloader/releases/latest';
+  var SELFUPD_ASSET = 'wk-dual-payload.elf';
+  var selfUpdateInfo = null;
+  var selfUpdateMsgTimer = 0;
+
+  function semverParts(v) {
+    v = String(v || '').replace(/^\s+|\s+$/g, '').replace(/^[vV]/, '');
+    var m = /^(\d+)\.(\d+)(?:\.(\d+))?/.exec(v);
+    if (!m) return null;
+    return [parseInt(m[1], 10) || 0, parseInt(m[2], 10) || 0, parseInt(m[3] || '0', 10) || 0];
+  }
+
+  /* Base semver compare; -dev / -pre suffixes are ignored. */
+  function cmpSemver(a, b) {
+    var A = semverParts(a) || [0, 0, 0];
+    var B = semverParts(b) || [0, 0, 0];
+    var i;
+    for (i = 0; i < 3; i++) {
+      if (A[i] > B[i]) return 1;
+      if (A[i] < B[i]) return -1;
+    }
+    return 0;
+  }
+
+  /* Running app version, or '' when the page is unbuilt (placeholder). */
+  function currentAppVersion() {
+    var ids = ['appVer'], el, txt, i, parts;
+    var sv = document.querySelector ? document.querySelector('.splash-ver') : null;
+    for (i = 0; i < ids.length; i++) {
+      el = document.getElementById(ids[i]);
+      txt = el ? String(el.textContent || '') : '';
+      parts = semverParts(txt);
+      if (parts) return parts.join('.');
+    }
+    txt = sv ? String(sv.textContent || '') : '';
+    parts = semverParts(txt);
+    return parts ? parts.join('.') : '';
+  }
+
+  function hideSelfUpdateBanner() {
+    var box = document.getElementById('selfupd');
+    if (box) box.classList.remove('show');
+    if (selfUpdateMsgTimer) { clearTimeout(selfUpdateMsgTimer); selfUpdateMsgTimer = 0; }
+  }
+
+  function setSelfUpdateDir(box) {
+    var info = null;
+    try {
+      if (window.WKAL_I18N && window.WKAL_I18N.langInfo) {
+        info = window.WKAL_I18N.langInfo(window.WKAL_I18N.getLang());
+      }
+    } catch (e) { }
+    if (info && info.rtl) box.setAttribute('dir', 'rtl');
+    else box.removeAttribute('dir');
+  }
+
+  function paintSelfUpdateBanner() {
+    var box = document.getElementById('selfupd');
+    var txt = document.getElementById('selfupdtxt');
+    var dl = document.getElementById('selfupddl');
+    var dx = document.getElementById('selfupdx');
+    if (!box || !txt || !selfUpdateInfo) return;
+    setSelfUpdateDir(box);
+    txt.textContent = t('selfUpdate', { ver: selfUpdateInfo.version });
+    if (dl) dl.textContent = t('update');
+    if (dx) dx.textContent = t('selfUpdateLater');
+  }
+
+  function showSelfUpdateBanner(info) {
+    var box = document.getElementById('selfupd');
+    var dl = document.getElementById('selfupddl');
+    if (!box || !info || !info.version) return;
+    selfUpdateInfo = info;
+    paintSelfUpdateBanner();
+    if (dl) dl.disabled = false;
+    box.classList.add('show');
+  }
+
+  function selfUpdateMessage(text, hideAfterMs) {
+    var txt = document.getElementById('selfupdtxt');
+    if (txt) txt.textContent = text;
+    uiLog('[update] ' + text, 'info');
+    if (selfUpdateMsgTimer) { clearTimeout(selfUpdateMsgTimer); selfUpdateMsgTimer = 0; }
+    if (hideAfterMs) selfUpdateMsgTimer = setTimeout(hideSelfUpdateBanner, hideAfterMs);
+  }
+
+  function rememberSelfUpdateDismiss(ver) {
+    try { localStorage.setItem(SELFUPD_DISMISS_KEY, String(ver || '')); } catch (e) { }
+  }
+
+  function dismissSelfUpdate() {
+    if (selfUpdateInfo && selfUpdateInfo.version) rememberSelfUpdateDismiss(selfUpdateInfo.version);
+    hideSelfUpdateBanner();
+  }
+
+  function fetchJsonText(url, cb) {
+    var done = false;
+    function fin(err, text) { if (done) return; done = true; cb(err, text); }
+    if (typeof fetch === 'function') {
+      fetch(url, { cache: 'no-store' })
+        .then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.text();
+        })
+        .then(function (text) { fin(null, text); })
+        .catch(function (e) { fin(e || new Error('fetch failed')); });
+      return;
+    }
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.timeout = 8000;
+      xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) fin(null, xhr.responseText);
+        else fin(new Error('HTTP ' + xhr.status));
+      };
+      xhr.onerror = function () { fin(new Error('network')); };
+      xhr.ontimeout = function () { fin(new Error('timeout')); };
+      xhr.send();
+    } catch (e2) { fin(e2); }
+  }
+
+  /* GitHub Releases latest -> banner when newer than the running UI. */
+  function checkSelfUpdate() {
+    var cur = currentAppVersion();
+    if (!cur || chainStarted) return;
+    fetchJsonText(SELFUPD_GH_LATEST, function (err, text) {
+      var j, tag, assets, i, a, url = '', dismissed = '';
+      if (err || chainStarted) return;
+      try { j = JSON.parse(text); } catch (e) { return; }
+      if (!j || j.draft || j.prerelease) return;
+      tag = String(j.tag_name || j.name || '').replace(/^\s+|\s+$/g, '').replace(/^[vV]/, '');
+      if (!semverParts(tag) || cmpSemver(tag, cur) <= 0) { hideSelfUpdateBanner(); return; }
+      assets = j.assets || [];
+      for (i = 0; i < assets.length; i++) {
+        a = assets[i] || {};
+        if (String(a.name || '').toLowerCase() === SELFUPD_ASSET) { url = a.browser_download_url || ''; break; }
+      }
+      if (!url) {
+        for (i = 0; i < assets.length; i++) {
+          a = assets[i] || {};
+          if (/^wk-dual-payload.*\.elf$/i.test(String(a.name || ''))) { url = a.browser_download_url || ''; break; }
+        }
+      }
+      try { dismissed = localStorage.getItem(SELFUPD_DISMISS_KEY) || ''; } catch (e2) { }
+      if (dismissed && cmpSemver(dismissed, tag) >= 0) return;
+      showSelfUpdateBanner({
+        version: semverParts(tag).join('.'),
+        tag: tag,
+        url: url,
+        page: j.html_url || SELFUPD_RELEASES_URL
+      });
+    });
+  }
+
+  function sendUrlToElfldr(fileUrl, cb) {
+    var target = 'http://127.0.0.1:9021/?uri=' + encodeURIComponent(fileUrl);
+    var done = false;
+    function fin(ok) { if (done) return; done = true; cb(ok); }
+    /* http pages (:1022 / PC host) can confirm with fetch; https Pages uses an
+       image ping like Elf Launcher (mixed-content safe, unconfirmed). */
+    if (location.protocol === 'http:' && typeof fetch === 'function') {
+      fetch(target, { method: 'GET', mode: 'no-cors', cache: 'no-store' })
+        .then(function () { fin(true); })
+        .catch(function () { fin(false); });
+      setTimeout(function () { fin(true); }, 6000);
+      return;
+    }
+    var img = new Image();
+    img.onload = function () { fin(true); };
+    img.onerror = function () { fin(true); };
+    img.src = target;
+    setTimeout(function () { fin(true); }, 1500);
+  }
+
+  function downloadSelfUpdate() {
+    var info = selfUpdateInfo;
+    var btn = document.getElementById('selfupddl');
+    if (!info) return;
+    if (/PlayStation/i.test(navigator.userAgent) && info.url) {
+      if (btn) btn.disabled = true;
+      selfUpdateMessage(t('selfUpdating', { ver: info.version }));
+      sendUrlToElfldr(info.url, function (ok) {
+        if (btn) btn.disabled = false;
+        if (ok) {
+          rememberSelfUpdateDismiss(info.version);
+          selfUpdateMessage(t('selfUpdated', { ver: info.version }), 8000);
+        } else {
+          selfUpdateMessage(t('selfUpdateFail', { msg: t('selfUpdateNoElfldr') }));
+        }
+      });
+      return;
+    }
+    try { window.open(info.url || info.page || SELFUPD_RELEASES_URL, '_blank'); } catch (e) { }
+    rememberSelfUpdateDismiss(info.version);
+    selfUpdateMessage(t('selfUpdateOpened', { ver: info.version }), 6000);
+  }
+
+  function bindSelfUpdateUi() {
+    var dl = document.getElementById('selfupddl');
+    var dx = document.getElementById('selfupdx');
+    if (dl) dl.onclick = function () { downloadSelfUpdate(); return false; };
+    if (dx) dx.onclick = function () { dismissSelfUpdate(); return false; };
+    setTimeout(checkSelfUpdate, 900);
+  }
+
   /* Wait for the user to pick Payload Manager vs elf-launcher on the splash
      before arming the exploit. A saved Auto-start preference arms a short
      cancellable countdown instead. */
-  window.addEventListener('load', bindLauncherChoiceUi);
+  window.wkalAfterLangChange = function () {
+    updateDetectUi();
+    /* Refresh Start / Cancel labels if countdown is idle. */
+    var go = document.getElementById('startJailbreak');
+    var cancel = document.getElementById('cancelAutoStart');
+    if (go && !chainStarted && !go.disabled) {
+      go.textContent = t('startJailbreak');
+    }
+    if (cancel) cancel.textContent = t('cancel');
+    if (selfUpdateInfo) paintSelfUpdateBanner();
+    if (elapsedMsgEl && !elapsedTimer) {
+      elapsedMsgEl.textContent = t('elapsed', { t: '0:00' });
+    }
+  };
+
+  window.addEventListener('load', function () {
+    if (window.WKAL_I18N && typeof window.WKAL_I18N.bindLangUi === 'function') {
+      window.WKAL_I18N.bindLangUi();
+    }
+    bindLauncherChoiceUi();
+    bindSelfUpdateUi();
+  });
 })();

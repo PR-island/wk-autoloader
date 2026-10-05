@@ -1,3 +1,4 @@
+/* Release tree marker: v1.0.3. */
 * {
   margin: 0;
   padding: 0;
@@ -958,3 +959,238 @@ body.fail #progressPct { color: #fca5a5; }
   text-shadow: none;
 }
 
+
+/* ---- Language picker (same pattern as Elf Launcher) ---- */
+#langbox {
+  position: relative;
+  width: 100%;
+  margin-top: 12px;
+  z-index: 40;
+}
+#langbtn {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  cursor: pointer;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: -webkit-linear-gradient(#2c6aa0, #123a5e);
+  background: linear-gradient(#2c6aa0, #123a5e);
+  -webkit-box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 3px 0 #06111c;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 3px 0 #06111c;
+}
+#langbtn:focus,
+.langopt:focus {
+  outline: 0;
+  -webkit-box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 0 0 2px #fff, 0 3px 0 #06111c;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 0 0 2px #fff, 0 3px 0 #06111c;
+}
+.flag {
+  display: inline-block;
+  width: 28px;
+  height: 19px;
+  -webkit-flex: 0 0 28px;
+  flex: 0 0 28px;
+  border-radius: 3px;
+  overflow: hidden;
+  -webkit-box-shadow: 0 0 0 1px rgba(255,255,255,.35);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.35);
+}
+.flag svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+#langlist {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 60;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px;
+  border-radius: 16px;
+  background: -webkit-linear-gradient(#123a5e, #071624);
+  background: linear-gradient(#123a5e, #071624);
+  border: 2px solid #7ec8ff;
+  -webkit-box-shadow: 0 12px 30px rgba(0,0,0,.6);
+  box-shadow: 0 12px 30px rgba(0,0,0,.6);
+  box-sizing: border-box;
+}
+#langlist.show {
+  display: -ms-grid;
+  display: grid;
+}
+.langopt {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  cursor: pointer;
+  color: #eaf6ff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 7px 10px;
+  border-radius: 10px;
+  text-align: left;
+  background: -webkit-linear-gradient(#1a4d7a, #0c2c4a);
+  background: linear-gradient(#1a4d7a, #0c2c4a);
+  -webkit-box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 2px 0 #06111c;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 2px 0 #06111c;
+}
+.langopt[data-state="on"] {
+  background: -webkit-linear-gradient(#7ec8ff, #1c82e4 55%, #0a4d94);
+  background: linear-gradient(#7ec8ff, #1c82e4 55%, #0a4d94);
+  -webkit-box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 0 0 2px #fff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 0 0 2px #fff;
+}
+
+/* RTL (Arabic) — mirror splash chrome; keep product names LTR inside buttons */
+#launcherChoice[dir="rtl"],
+#loader[dir="rtl"] {
+  text-align: right;
+}
+#launcherChoice[dir="rtl"] .support-title,
+#launcherChoice[dir="rtl"] .detect-title,
+#launcherChoice[dir="rtl"] .choice-title,
+#launcherChoice[dir="rtl"] .choice-hint,
+#launcherChoice[dir="rtl"] .pages-links,
+#launcherChoice[dir="rtl"] .splash-brand,
+#launcherChoice[dir="rtl"] .auto-jb-toggle {
+  text-align: right;
+}
+#launcherChoice[dir="rtl"] .langopt {
+  text-align: right;
+  -webkit-box-orient: horizontal;
+  -webkit-box-direction: reverse;
+  -webkit-flex-direction: row-reverse;
+  flex-direction: row-reverse;
+}
+#launcherChoice[dir="rtl"] #langbtn {
+  -webkit-box-orient: horizontal;
+  -webkit-box-direction: reverse;
+  -webkit-flex-direction: row-reverse;
+  flex-direction: row-reverse;
+}
+#loader[dir="rtl"] #statusMsg,
+#loader[dir="rtl"] #metaMsg,
+#loader[dir="rtl"] #elapsedMsg,
+#loader[dir="rtl"] #titleMsg,
+#loader[dir="rtl"] #successMsg,
+#loader[dir="rtl"] #failMsg {
+  text-align: right;
+}
+
+/* ---- Self-update banner (same pattern as Elf Launcher #selfupd) ---- */
+#selfupd {
+  display: none;
+  position: fixed;
+  left: 50%;
+  top: 10px;
+  -webkit-transform: translateX(-50%);
+  transform: translateX(-50%);
+  z-index: 90;
+  width: auto;
+  max-width: 92vw;
+  padding: 10px 14px;
+  border-radius: 14px;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+  text-align: center;
+  background: -webkit-linear-gradient(#2a6aa0, #123a5e);
+  background: linear-gradient(#2a6aa0, #123a5e);
+  border: 2px solid #9fd0ff;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .45), 0 0 14px 2px rgba(120, 190, 255, .55);
+  -webkit-animation: selfupdGlow 2.4s ease-in-out infinite;
+  animation: selfupdGlow 2.4s ease-in-out infinite;
+}
+#selfupd.show {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+}
+#selfupd p {
+  margin: 4px 8px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+#selfupd .acts {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  margin: 4px;
+}
+#selfupd button {
+  border: 0;
+  cursor: pointer;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  padding: 8px 16px;
+  margin: 0 4px;
+  border-radius: 999px;
+}
+#selfupd button[disabled] {
+  opacity: .6;
+  cursor: default;
+}
+#selfupddl {
+  background: -webkit-linear-gradient(#fff8d8, #f5b410 50%, #9a5800);
+  background: linear-gradient(#fff8d8, #f5b410 50%, #9a5800);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 0 10px 2px rgba(255, 200, 40, .6), 0 3px 0 #5a3c04;
+  text-shadow: 0 2px 0 #5a3c04;
+}
+#selfupdx {
+  background: -webkit-linear-gradient(#7aa7c8, #2a4d6a);
+  background: linear-gradient(#7aa7c8, #2a4d6a);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 3px 0 #06111c;
+}
+#selfupd button:focus {
+  outline: 0;
+  box-shadow: 0 0 0 3px #fff;
+}
+@-webkit-keyframes selfupdGlow {
+  0%, 100% { box-shadow: 0 10px 24px rgba(0, 0, 0, .45), 0 0 8px 1px rgba(120, 190, 255, .35); }
+  50% { box-shadow: 0 10px 24px rgba(0, 0, 0, .45), 0 0 20px 5px rgba(150, 210, 255, .8); }
+}
+@keyframes selfupdGlow {
+  0%, 100% { box-shadow: 0 10px 24px rgba(0, 0, 0, .45), 0 0 8px 1px rgba(120, 190, 255, .35); }
+  50% { box-shadow: 0 10px 24px rgba(0, 0, 0, .45), 0 0 20px 5px rgba(150, 210, 255, .8); }
+}
