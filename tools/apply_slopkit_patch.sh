@@ -66,7 +66,7 @@ else
 fi
 
 # Extra settle after elfldr accepts (Payload Manager panic if too soon).
-# Also register elf-launcher.elf as a hidden PAYLOADS entry (not in the base patch).
+# Also register elf-launcher.elf / pldmgr.elf as hidden PAYLOADS entries (not in the base patch).
 python3 "$ROOT/tools/slopkit_autoload_settle.py" "$DEST"
 python3 "$ROOT/tools/slopkit_autoload_elf_launcher.py" "$DEST"
 python3 "$ROOT/tools/autoload_resend_listener.py" "$DEST"
@@ -85,6 +85,8 @@ if ! grep -q 'sendPayloadToElfldr(cfg.autoload, "../../payloads/"' slopkit/poops
     || ! grep -q 'name: "payload.elf"' slopkit/poops.html \
     || ! grep -q 'name: "elf-launcher.elf"' slopkit/poops.html \
     || ! grep -q 'name: "elf-launcher.elf"' slopkit/p2jb.html \
+    || ! grep -q 'name: "pldmgr.elf"' slopkit/poops.html \
+    || ! grep -q 'name: "pldmgr.elf"' slopkit/p2jb.html \
     || ! grep -q '"url=../../shared/" + name' slopkit/poops.js \
     || ! grep -q 'const AUTOLOAD = Q.get("autoload")' slopkit/p2jb.html \
     || ! grep -q 'sendPayloadToElfldr(AUTOLOAD, "../../payloads/")' slopkit/p2jb.html \
@@ -111,7 +113,7 @@ if ! grep -q 'sendPayloadToElfldr(cfg.autoload, "../../payloads/"' slopkit/poops
     exit 1
 fi
 echo "slopkit: patch verification OK (autoload block + probe-path autoload,"
-echo "         exactQuery relaxation, hidden payload.elf + elf-launcher.elf tiles, shared elfldr"
+echo "         exactQuery relaxation, hidden payload.elf + elf-launcher.elf + pldmgr.elf tiles, shared elfldr"
 echo "         on poops + p2jb; STAGE5-DONE on-ready; settle 150ms; Sent single-flight)."
 
 

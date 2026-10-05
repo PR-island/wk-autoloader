@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Release tree marker: v1.0.0
 # Download the shared ps5-elfldr ELF, the ps5-unified-autoloader payload
-# ELF, and the optional elf-launcher ELF from their GitHub releases.
+# ELF, the Payload Manager ELF, and the optional elf-launcher ELF from
+# their GitHub releases.
 #
 #   third_party/ps5-elfldr             -> frontend/autoloader/shared/elfldr-ps5.elf
 #   third_party/ps5-unified-autoloader -> frontend/autoloader/payloads/payload.elf
+#   itsPLK/ps5-payload-manager@v0.5.1  -> frontend/autoloader/payloads/pldmgr.elf
 #   X-F1REBALL-X/elf-launcher@1.0.0  -> frontend/autoloader/payloads/elf-launcher.elf
 #
 # The shared elfldr is used by the slopkit chain (7.00-12.00); umtx2
@@ -43,10 +45,25 @@ PAYLOAD_SUBMODULE="$ROOT/third_party/ps5-unified-autoloader"
 PAYLOAD_REPO="itsPLK/ps5-unified-autoloader"
 PAYLOAD_DEST="$ROOT/frontend/autoloader/payloads/payload.elf"
 
+# Standalone Payload Manager (splash choice payload-manager -> pldmgr.elf).
+# Pinned release; local copies (docs/ or sibling relapse tree) win when present.
+PLDMGR_REPO="itsPLK/ps5-payload-manager"
+PLDMGR_TAG="v0.5.1"
+PLDMGR_PINNED_SHA=05617c69ea145d1c11b8f7a6b7d3bd9e6df3831afd25d71a4ac85d63fb8e28aa
+PLDMGR_DEST="$ROOT/frontend/autoloader/payloads/pldmgr.elf"
+PLDMGR_LOCAL_CANDIDATES=(
+    "$ROOT/docs/payloads/pldmgr.elf"
+    "/workspace/ps5-elfs/homebrew/payload-manager.elf"
+    "/workspace/elf-launcher-data-new/apps/payload-manager.elf"
+    "$ROOT/../elf-launcher-data-new/apps/payload-manager.elf"
+    "/workspace/wk-autoloader-relapse/frontend/autoloader/payloads/pldmgr.elf"
+    "$ROOT/../wk-autoloader-relapse/frontend/autoloader/payloads/pldmgr.elf"
+)
+
 # Optional post-JB launcher (elf-launcher HTTP :1000, Kill APIs). Pinned
 # release; local sibling copies under /workspace/elf-launcher* win when present.
 ELFLAUNCHER_REPO="X-F1REBALL-X/elf-launcher"
-ELFLAUNCHER_TAG="1.0.0"
+ELFLAUNCHER_TAG="1.1.0"
 # Current console binary. Always send it. A live :1000 is not a skip:
 # the ELF applies Open or Leave closed and loads Auto when closed.
 # Prefer launcher/elf-launcher.elf (current HOME_ICON_VERSION) over stale docs/launcher trees.
@@ -216,6 +233,50 @@ download_release "$PAYLOAD_REPO" "$PAYLOAD_TAG" "$PAYLOAD_DEST" || {
     exit 1
   fi
 }
+
+# Prefer a local/bundled pldmgr only when it matches the pinned sha.
+pldmgr_from_local() {
+    local src sha
+    for src in "${PLDMGR_LOCAL_CANDIDATES[@]}"; do
+        if [ -f "$src" ]; then
+            sha=$(sha256sum "$src" | awk '{print $1}')
+            if [ -n "$PLDMGR_PINNED_SHA" ] && [ "$sha" != "$PLDMGR_PINNED_SHA" ]; then
+                echo "pldmgr: skip $src (sha $sha != pinned $PLDMGR_PINNED_SHA)"
+                continue
+            fi
+            mkdir -p "$(dirname "$PLDMGR_DEST")"
+            cp -f "$src" "$PLDMGR_DEST"
+            if [ -f "$src.sha256" ]; then cp -f "$src.sha256" "$PLDMGR_DEST.sha256"; fi
+            echo "pldmgr: pinned local copy $src -> $PLDMGR_DEST"
+            return 0
+        fi
+    done
+    if [ -f "$PLDMGR_DEST" ]; then
+        sha=$(sha256sum "$PLDMGR_DEST" | awk '{print $1}')
+        if [ -z "$PLDMGR_PINNED_SHA" ] || [ "$sha" = "$PLDMGR_PINNED_SHA" ]; then
+            echo "pldmgr: keeping verified bundled $PLDMGR_DEST"
+            return 0
+        fi
+        echo "pldmgr: bundled sha $sha is not pinned; will re-fetch"
+    fi
+    return 1
+}
+
+if ! pldmgr_from_local; then
+  download_release "$PLDMGR_REPO" "$PLDMGR_TAG" "$PLDMGR_DEST" || {
+    if [ -f "$PLDMGR_DEST" ]; then
+      echo "warning: pldmgr download failed; keeping existing $PLDMGR_DEST"
+    else
+      echo "Error: pldmgr.elf missing (no local copy, download failed)." >&2
+      exit 1
+    fi
+  }
+fi
+if [ -f "$PLDMGR_DEST" ]; then
+  PLDMGR_SHA=$(sha256sum "$PLDMGR_DEST" | awk '{print $1}')
+  printf '%s %s
+' "$PLDMGR_TAG" "$PLDMGR_SHA" > "$PLDMGR_DEST.sha256"
+fi
 
 # Prefer the local elf-launcher only when it is newer than the bundled copy.
 # This lets a freshly built sibling ELF flow into the installer without

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Register elf-launcher.elf and wkal-mark.elf as hidden WKAL PAYLOADS entries.
+"""Register hidden WKAL PAYLOADS entries for autoload ELFs.
 
-Without this, sendPayloadToElfldr throws 'payload is not listed in this menu'.
+Without these, sendPayloadToElfldr throws 'payload is not listed in this menu'.
+Covers: elf-launcher.elf, wkal-mark.elf, wkal-companions.elf, pldmgr.elf.
 """
 import sys
 from pathlib import Path
@@ -18,7 +19,9 @@ NEW = (
     '    { title: "WKAL mark", description: "", name: "wkal-mark.elf",\n'
     '        info: "wkal-mark.elf", hidden: true },\n'
     '    { title: "WKAL companions", description: "", name: "wkal-companions.elf",\n'
-    '        info: "wkal-companions.elf", hidden: true }'
+    '        info: "wkal-companions.elf", hidden: true },\n'
+    '    { title: "WKAL autoload pldmgr", description: "", name: "pldmgr.elf",\n'
+    '        info: "pldmgr.elf", hidden: true }'
 )
 EL_ONLY = (
     '    { title: "WKAL autoload elf-launcher", description: "", name: "elf-launcher.elf",\n'
@@ -30,15 +33,56 @@ EL_WITH_MARK = (
     '    { title: "WKAL mark", description: "", name: "wkal-mark.elf",\n'
     '        info: "wkal-mark.elf", hidden: true },\n'
     '    { title: "WKAL companions", description: "", name: "wkal-companions.elf",\n'
+    '        info: "wkal-companions.elf", hidden: true },\n'
+    '    { title: "WKAL autoload pldmgr", description: "", name: "pldmgr.elf",\n'
+    '        info: "pldmgr.elf", hidden: true }'
+)
+PLDMGR_TILE = (
+    '    { title: "WKAL autoload pldmgr", description: "", name: "pldmgr.elf",\n'
+    '        info: "pldmgr.elf", hidden: true }'
+)
+COMPANIONS_ONLY = (
+    '    { title: "WKAL companions", description: "", name: "wkal-companions.elf",\n'
     '        info: "wkal-companions.elf", hidden: true }'
 )
+COMPANIONS_WITH_PLDMGR = (
+    '    { title: "WKAL companions", description: "", name: "wkal-companions.elf",\n'
+    '        info: "wkal-companions.elf", hidden: true },\n'
+    '    { title: "WKAL autoload pldmgr", description: "", name: "pldmgr.elf",\n'
+    '        info: "pldmgr.elf", hidden: true }'
+)
+
+
+def ensure_pldmgr(path: Path, t: str) -> bool:
+    """Append pldmgr tile when companions (or mark) already present."""
+    if 'name: "pldmgr.elf"' in t:
+        print(f"already listed pldmgr: {path}")
+        return False
+    if COMPANIONS_ONLY in t:
+        path.write_text(t.replace(COMPANIONS_ONLY, COMPANIONS_WITH_PLDMGR, 1))
+        print(f"listed pldmgr after companions: {path}")
+        return True
+    # Fallback: append after the last hidden WKAL tile block ending.
+    needle = (
+        '    { title: "WKAL mark", description: "", name: "wkal-mark.elf",\n'
+        '        info: "wkal-mark.elf", hidden: true }'
+    )
+    if needle in t and 'name: "wkal-companions.elf"' not in t:
+        add = needle + ',\n' + PLDMGR_TILE
+        path.write_text(t.replace(needle, add, 1))
+        print(f"listed pldmgr after mark: {path}")
+        return True
+    print(f"WARN: could not place pldmgr tile in {path}", file=sys.stderr)
+    return False
 
 
 def patch_file(path: Path) -> bool:
     t = path.read_text()
-    if 'name: "wkal-companions.elf"' in t:
+    if 'name: "pldmgr.elf"' in t and 'name: "wkal-companions.elf"' in t:
         print(f"already listed: {path}")
         return False
+    if 'name: "wkal-companions.elf"' in t:
+        return ensure_pldmgr(path, t)
     if 'name: "wkal-mark.elf"' in t and 'name: "elf-launcher.elf"' in t:
         needle = (
             '    { title: "WKAL mark", description: "", name: "wkal-mark.elf",\n'
@@ -48,24 +92,26 @@ def patch_file(path: Path) -> bool:
             '    { title: "WKAL mark", description: "", name: "wkal-mark.elf",\n'
             '        info: "wkal-mark.elf", hidden: true },\n'
             '    { title: "WKAL companions", description: "", name: "wkal-companions.elf",\n'
-            '        info: "wkal-companions.elf", hidden: true }'
+            '        info: "wkal-companions.elf", hidden: true },\n'
+            '    { title: "WKAL autoload pldmgr", description: "", name: "pldmgr.elf",\n'
+            '        info: "pldmgr.elf", hidden: true }'
         )
         if needle in t:
             path.write_text(t.replace(needle, add, 1))
-            print(f"listed companions after mark: {path}")
+            print(f"listed companions+pldmgr after mark: {path}")
             return True
     if 'name: "elf-launcher.elf"' in t:
         if EL_ONLY not in t:
             print(f"WARN: elf-launcher tile shape unexpected in {path}", file=sys.stderr)
             return False
         path.write_text(t.replace(EL_ONLY, EL_WITH_MARK, 1))
-        print(f"listed mark+companions after elf-launcher: {path}")
+        print(f"listed mark+companions+pldmgr after elf-launcher: {path}")
         return True
     if OLD not in t:
         print(f"WARN: WKAL payload.elf tile not found in {path}", file=sys.stderr)
         return False
     path.write_text(t.replace(OLD, NEW, 1))
-    print(f"listed elf-launcher+mark: {path}")
+    print(f"listed elf-launcher+mark+companions+pldmgr: {path}")
     return True
 
 

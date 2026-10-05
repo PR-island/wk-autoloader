@@ -80,51 +80,53 @@
      unknowns. research_ul / "not supported" is not used for this range. */
   var RELAPSE_FIRMWARES = ["7.00", "7.01", "7.20", "7.40", "7.60", "7.61", "8.00", "8.20", "8.40", "8.60", "9.00", "9.20", "9.40", "9.60", "10.00", "10.01", "10.20", "10.40", "10.60", "11.00", "11.20", "11.60", "12.00", "12.02", "12.20", "12.40", "12.60", "12.70", "13.00", "13.20", "13.40", "13.42", "13.60"];
 
-  /* Post-JB launcher preference (localStorage). Values:
-       payload-manager -> frontend/autoloader/payloads/payload.elf
+  /* Post-JB launcher preference (localStorage). Explicit values only:
+       payload-manager -> frontend/autoloader/payloads/pldmgr.elf
        elf-launcher    -> frontend/autoloader/payloads/elf-launcher.elf
-     Default is elf-launcher (user-preferred path); last choice wins. */
+     Missing, default, or any other value emits wkal-skip so elfldr is
+     sent nothing and Elf Launcher does not open. pldmgr.elf is the
+     standalone itsPLK Payload Manager. payload.elf is the unified
+     autoloader and must not be sent for this choice. elfldr accepts
+     one ELF; do not pre-send a second one when the installer loads. */
   var LS_LAUNCHER_KEY = 'wkal_postjb_launcher';
   var CHOICE_PAYLOAD_MANAGER = 'payload-manager';
   var CHOICE_ELF_LAUNCHER = 'elf-launcher';
   /* Generated from payloads/elf-launcher.elf.sha256 by payload-deps.
-     Recorded after a successful send for diagnostics only. If :1000 already
-     answers, do not send elf-launcher.elf again. Open http://127.0.0.1:1000/
-     only when the ps5elfs-browser cookie is exactly open. */
+     Recorded after a successful send for diagnostics only. elf-launcher.elf
+     is sent only when the splash choice is exactly elf-launcher. */
   var BUNDLED_ELFLAUNCHER_SHA = '95573acb3930760bba963a5826f1561ca4d7c49872670b444903d2ff274a5118';
   var BUNDLED_ELFLAUNCHER_VER = '1.1.0';
   var LS_ELFLAUNCHER_SHA = 'wkal_elf_launcher_sha';
   var LS_ELFLAUNCHER_VER = 'wkal_elf_launcher_ver';
-  var launcherChoice = CHOICE_ELF_LAUNCHER;
+  var launcherChoice = null;
 
-  /* Clear any legacy skip-send flags from older WKAL builds so a stale
-     sessionStorage never re-enables skip in mixed caches. */
-  function clearLegacyElfLauncherSkipFlags() {
-    try {
-      sessionStorage.removeItem('wkal_skip_elf_launcher_send');
-      sessionStorage.removeItem('wkal_elf_launcher_skip');
-    } catch (e) { }
+  function isExplicitLauncherChoice(choice) {
+    return choice === CHOICE_PAYLOAD_MANAGER || choice === CHOICE_ELF_LAUNCHER;
   }
+
+  /* Legacy skip keys must not be deleted and then replaced with a real ELF.
+     Nothing reads them into a send; autoload name is wkal-skip unless the
+     splash choice is explicit. */
+  function clearLegacyElfLauncherSkipFlags() { }
 
   function loadLauncherChoice() {
     try {
       var saved = localStorage.getItem(LS_LAUNCHER_KEY);
-      if (saved === CHOICE_PAYLOAD_MANAGER || saved === CHOICE_ELF_LAUNCHER) {
-        return saved;
-      }
+      if (isExplicitLauncherChoice(saved)) return saved;
     } catch (e) { }
-    return CHOICE_ELF_LAUNCHER;
+    return null;
   }
 
   function saveLauncherChoice(choice) {
+    if (!isExplicitLauncherChoice(choice)) return;
     launcherChoice = choice;
     try { localStorage.setItem(LS_LAUNCHER_KEY, choice); } catch (e) { }
   }
 
   function autoloadElfName() {
-    return launcherChoice === CHOICE_ELF_LAUNCHER
-      ? 'elf-launcher.elf'
-      : 'payload.elf';
+    if (launcherChoice === CHOICE_ELF_LAUNCHER) return 'elf-launcher.elf';
+    if (launcherChoice === CHOICE_PAYLOAD_MANAGER) return 'pldmgr.elf';
+    return 'wkal-skip';
   }
 
   /* Keep in sync with EXPLOIT_IFRAME_URL in tools/gen_file_registry.py - the
@@ -647,7 +649,9 @@
       if (failMsgEl) {
         try { failMsgEl.hidden = true; failMsgEl.textContent = ''; } catch (e0) { }
       }
-      if (data.skipped || !(Number(data.bytes) > 0)) {
+      if (data.skipped || autoloadElfName() === 'wkal-skip') {
+        uiLog('No post-JB ELF sent (wkal-skip).', 'info');
+      } else if (!(Number(data.bytes) > 0)) {
         uiLog('Autoload ok but send missing/skipped (bytes='
           + String(data.bytes) + ') - will wait on HTTP and may re-send.', 'warning');
       } else {
@@ -676,7 +680,7 @@
           return;
         }
         uiLog('elf-launcher sent - Open browser or Leave closed applies on the console', 'success');
-      } else {
+      } else if (launcherChoice === CHOICE_PAYLOAD_MANAGER) {
         if (!sent) {
           uiLog('Payload Manager send missing - not opening :8084 yet.', 'warning');
           return;
@@ -1420,12 +1424,11 @@
   }
 
   function start() {
-    /* Always send elf-launcher. If :1000 is already up the ELF must still
-       apply Open or Leave closed and load Auto. It does not reinstall. */
+    /* Explicit splash choice only. Anything else is wkal-skip: one name,
+       nothing sent to 9021, Elf Launcher stays closed. */
     launcherHttpOpenStarted = false;
-    clearLegacyElfLauncherSkipFlags();
     elfHttpAlreadyUp = false;
-    startChain(false);
+    startChain(!isExplicitLauncherChoice(launcherChoice));
   }
 
   function startChain(skipElfSend) {
@@ -1460,9 +1463,7 @@
     exploitMode = picked;
     setMeta(fw ? fw.str : '-', picked);
 
-    var autoloadName = autoloadElfName();
-    if (skipElfSend)
-      uiLog('legacy skip ignored - still sending ' + autoloadName, 'info');
+    var autoloadName = skipElfSend ? 'wkal-skip' : autoloadElfName();
     var urls = buildExploitUrls(autoloadName);
     UMTX2_URL = urls.umtx2;
     P2JB_URL = urls.p2jb;
@@ -1470,9 +1471,11 @@
     EXPLOIT_URL = picked === 'umtx2' ? UMTX2_URL
       : picked === 'p2jb' ? P2JB_URL
         : RELAPSE_URL;
-    uiLog('Post-JB launcher: ' + (launcherChoice === CHOICE_ELF_LAUNCHER
+    uiLog('Post-JB launcher: ' + (autoloadName === 'elf-launcher.elf'
       ? 'elf-launcher (' + autoloadName + ')'
-      : 'Payload Manager (' + autoloadName + ')'), 'info');
+      : autoloadName === 'pldmgr.elf'
+        ? 'Payload Manager (' + autoloadName + ')'
+        : 'none (' + autoloadName + ')'), 'info');
 
     /* p2jb's own ticker repaints at exactly 1 Hz - polling any faster only
        burns shared-thread time; the fast chains keep 500 ms for snappier
@@ -1595,7 +1598,6 @@
           if (cancel) cancel.hidden = true;
           go.textContent = 'Starting\u2026';
           saveLauncherChoice(launcherChoice);
-          clearLegacyElfLauncherSkipFlags();
           start();
           return;
         }
@@ -1636,7 +1638,6 @@
         cancelAutoCountdown();
         go.disabled = true;
         saveLauncherChoice(launcherChoice);
-        clearLegacyElfLauncherSkipFlags();
         start();
       });
     }
