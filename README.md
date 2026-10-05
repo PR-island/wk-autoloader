@@ -5,11 +5,8 @@ Dual Payload
 
 ![WK Dual Payload preview](docs/screenshots/home.png)
 
-Live page: https://x-f1reball-x.github.io/wk-dual-payload/
-
 PS5 homebrew: jailbreak UI on port **1022**. Chains: **umtx2** (1-5.50), **relapse** (7.00-13.60).
 
-- Repository: https://github.com/X-F1REBALL-X/wk-dual-payload
 - Pages: https://x-f1reball-x.github.io/wk-dual-payload/
 - Download ELF: https://github.com/X-F1REBALL-X/wk-dual-payload/releases/latest
 
