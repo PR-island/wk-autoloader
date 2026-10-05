@@ -1,39 +1,34 @@
 # WK Autoloader
 
-
-## Preview
-
 ![WK Autoloader preview](docs/screenshots/home.png)
 
-PS5 homebrew: jailbreak UI on port **1022**. Chains: **umtx2** (1-5.50), **relapse** (7.00-13.60).
+PS5 jailbreak host on port **1022**.
 
 - Pages: https://x-f1reball-x.github.io/wk-autoloader/
 - Download ELF: https://github.com/X-F1REBALL-X/wk-autoloader/releases/latest
 
-## What the ELF does
+## Features
 
-`wk-dual-payload.elf` installs a **Media** home-screen app and caches the offline UI. After that finishes, the home icon works offline, including after reboot, until the cache is invalidated. No need to resend the ELF each boot.
+- Media home app + offline UI cache after one install
+- Chains: **umtx2** (1-5.50), **relapse** (7.00-13.60)
+- Post-JB: **Payload Manager** (`:8084`) or **Elf Launcher** Hybrid (`:1000`)
+- Hybrid sends current Elf tip when `:1000` is down; opens (and triggers Auto) when up
+- Tip stays synced with [Elf Launcher](https://github.com/X-F1REBALL-X/elf-launcher)
+- **10 languages:** en, ar, es, fr, de, pt, ru, ja, zh, it (shared `ps5elfs-lang` with Elf)
 
-After the jailbreak, choosing **Payload Manager** sends `pldmgr.elf` and opens `:8084`. Choosing **Elf Launcher** is **Hybrid**: if `:1000` is already up, WK only opens that page; if it is down, WK sends the current on-disk tip `elf-launcher.elf` (never an old pinned downgrade), waits for `:1000`, then opens. WK does not navigate to a dead `:1000` when the send fails.
+## Usage
 
-## Use
-
-1. Soft jailbreak the console and start **elfldr** on port **9021**.
-2. Send `wk-dual-payload.elf` to `9021` and wait until caching and install finish.
-3. Open `http://PS5_IP:1022`, or the [Pages host](https://x-f1reball-x.github.io/wk-autoloader/). The home icon works offline after install.
-4. On the splash, pick Payload Manager or Elf Launcher, then press **Start Jailbreak**. The choice is saved on the console.
-
-## Payload loaders
-
-- **Payload Manager on `:8084`** loads and sends payloads from its HTTP manager.
-- **Elf Launcher on `:1000`** loads ELF payloads via BinLoader. See the [Elf Launcher repository](https://github.com/X-F1REBALL-X/elf-launcher).
+1. Soft jailbreak; start elfldr on `9021`.
+2. Send `wk-dual-payload.elf`; wait for install/cache.
+3. Open `http://PS5_IP:1022` or Pages.
+4. Pick Payload Manager or Elf Launcher, then **Start Jailbreak**.
 
 ## Ports
 
 | Port | Role |
 |------|------|
 | **1022** | WK Autoloader |
-| **9021** | elfldr, send `wk-dual-payload.elf` and other ELFs |
+| **9021** | elfldr |
 | **8084** | Payload Manager |
 | **1000** | [Elf Launcher](https://github.com/X-F1REBALL-X/elf-launcher) |
 
@@ -47,7 +42,7 @@ After the jailbreak, choosing **Payload Manager** sends `pldmgr.elf` and opens `
 
 ## Credits
 
-**X-F1REBALL-X** — packaging, routing, UI.
+**X-F1REBALL-X** - packaging, routing, UI.
 
 ### umtx2 (1.xx-5.50)
 
