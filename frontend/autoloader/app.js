@@ -94,8 +94,8 @@
   /* Generated from payloads/elf-launcher.elf.sha256 by payload-deps.
      Recorded after a successful send for diagnostics only. elf-launcher.elf
      is sent only when the splash choice is exactly elf-launcher. */
-  var BUNDLED_ELFLAUNCHER_SHA = '84a92f5371809d440d88cba55ee72fe8479e6284891f1863980e36419eec71ca';
-  var BUNDLED_ELFLAUNCHER_VER = '1.0.47-test';
+  var BUNDLED_ELFLAUNCHER_SHA = '0ecf304a26f4b67c1cc11818b3af5a02e78da1733093480061a7d5d00db72fb6';
+  var BUNDLED_ELFLAUNCHER_VER = '1.0.0';
   var LS_ELFLAUNCHER_SHA = 'wkal_elf_launcher_sha';
   var LS_ELFLAUNCHER_VER = 'wkal_elf_launcher_ver';
   var launcherChoice = null;
