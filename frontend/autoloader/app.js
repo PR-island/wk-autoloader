@@ -3,6 +3,17 @@
 
   /* Release tree marker: v1.0.2. */
 
+  /* i18n: prefer WKAL_I18N.t from i18n.js; fall back to English key text. */
+  function t(key, vars) {
+    if (typeof window !== 'undefined' && window.WKAL_I18N && typeof window.WKAL_I18N.t === 'function') {
+      return window.WKAL_I18N.t(key, vars);
+    }
+    return key;
+  }
+  function elapsedLabel(ms) {
+    return t('elapsed', { t: formatElapsed(ms) });
+  }
+
   var splashEl = document.getElementById('splash');
   var loaderEl = document.getElementById('loader');
   var logContainer = document.getElementById('logContainer');
@@ -243,10 +254,10 @@
   function startElapsed() {
     if (elapsedTimer) return;
     elapsedStart = Date.now();
-    if (elapsedMsgEl) elapsedMsgEl.textContent = 'Elapsed 0:00';
+    if (elapsedMsgEl) elapsedMsgEl.textContent = t('elapsed', { t: '0:00' });
     elapsedTimer = setInterval(function () {
       if (!elapsedMsgEl) return;
-      var elapsedText = 'Elapsed ' + formatElapsed(Date.now() - elapsedStart);
+      var elapsedText = t('elapsed', { t: formatElapsed(Date.now() - elapsedStart) });
       if (elapsedMsgEl.textContent !== elapsedText) elapsedMsgEl.textContent = elapsedText;
     }, 1000);
   }
@@ -263,10 +274,10 @@
   function setMeta(fwStr, chain) {
     if (!metaMsgEl) return;
     if (chain === 'research_ul' || chain === 'userland only') {
-      metaMsgEl.textContent = 'FW ' + (fwStr || '-') + ' · not supported';
+      metaMsgEl.textContent = t('metaFwUnsupported', { fw: fwStr || '-' });
       return;
     }
-    metaMsgEl.textContent = 'FW ' + (fwStr || '-') + ' · chain ' + formatChainLabel(chain);
+    metaMsgEl.textContent = t('metaFwChain', { fw: fwStr || '-', chain: formatChainLabel(chain) });
   }
 
   function finishProgressSuccess(message) {
@@ -284,12 +295,12 @@
       updateProgress(Math.floor(from + (100 - from) * p));
       if (p >= 1) {
         try { clearInterval(anim); } catch (eA) {}
-        updateProgress(100, message || 'Jailbreak completed successfully');
+        updateProgress(100, message || t('jailbreakSuccess'));
       }
     }, 30);
     try { document.body.className = 'done'; } catch (e) {}
     if (successMsgEl) {
-      successMsgEl.innerHTML = '<span class="check" aria-hidden="true"></span>Jailbreak completed successfully';
+      successMsgEl.innerHTML = '<span class="check" aria-hidden="true"></span>' + t('jailbreakSuccess');
     }
   }
 
@@ -302,10 +313,10 @@
     }
     try { document.body.className = 'fail'; } catch (e) {}
     if (failMsgEl) {
-      failMsgEl.textContent = message || 'Jailbreak failed - restart your console';
+      failMsgEl.textContent = message || t('jailbreakFail');
     }
     if (statusMsgEl) statusMsgEl.style.display = 'none';
-    uiLog(message || 'Jailbreak failed - restart your console', 'error');
+    uiLog(message || t('jailbreakFail'), 'error');
   }
 
   window.uiLog = uiLog;
@@ -461,24 +472,23 @@
         + ' the ELF then reopens :' + portHint + '.', 'warning');
       if (statusMsgEl) {
         try {
-          statusMsgEl.textContent = label + ' page not open yet - Retry below';
+          statusMsgEl.textContent = t('pageNotOpen', { label: label });
         } catch (eS) { }
       }
       if (successMsgEl) {
         try {
           successMsgEl.hidden = false;
-          successMsgEl.textContent = 'JB OK. ' + label
-            + ' did not answer on :' + portHint + ' in time.';
+          successMsgEl.textContent = t('jbOkNoAnswer', { label: label, port: portHint });
         } catch (eOk) { }
       }
       try {
         var btn = document.createElement('button');
         btn.type = 'button';
-        btn.textContent = 'Retry send + open ' + label + ' (:' + portHint + ')';
+        btn.textContent = t('retrySendOpen', { label: label, port: portHint });
         btn.style.cssText = 'display:block;margin:8px 0;padding:8px 12px;'
           + 'font-size:14px;cursor:pointer;';
         btn.onclick = function () {
-          try { btn.disabled = true; btn.textContent = 'Re-sending...'; } catch (eB) { }
+          try { btn.disabled = true; btn.textContent = t('resending'); } catch (eB) { }
           requestResendAutoload();
           setTimeout(function () {
             openWhenHttpReady(url, label, portHint, maxWaitMs, 3000, settle, false);
@@ -665,14 +675,14 @@
       }
       /* Mark JB done BEFORE waiting on HTTP open - open timeout must not
          look like a stuck jailbreak. */
-      finishProgressSuccess('Jailbreak completed successfully');
+      finishProgressSuccess(t('jailbreakSuccess'));
 
       /* Keep exploit iframe alive until HTTP open / resend finishes.
          Never blank it before top.location.replace — clearing mid-payload
          crashes WebKit. Navigation tears the page down after :1000/:8084 ready. */
     } else {
       uiLog('[ERROR] Autoload failed: ' + (data.why || 'unknown error'), 'error');
-      finishProgressFail('Jailbreak failed - restart your console');
+      finishProgressFail(t('jailbreakFail'));
     }
     setTimeout(function () {
       if (!data.ok) return;
@@ -837,7 +847,7 @@
            transient FAIL in stage text would block opening :1000/:8084. */
         if (!finished && !autoloadPending) {
           finished = true;
-          finishProgressFail('Jailbreak failed - restart your console');
+          finishProgressFail(t('jailbreakFail'));
         }
       } else if (/jailbreak completed|completed successfully|elf loader ready/i.test(st)) {
         uiLog('[stage] ' + lastStageText, 'success');
@@ -1463,8 +1473,8 @@
 
   function startChain(skipElfSend) {
     uiLog('WK Autoloader by X-F1REBALL-X', 'success');
-    if (statusMsgEl) statusMsgEl.textContent = 'Jailbreak started';
-    updateProgress(0, 'Jailbreak started');
+    if (statusMsgEl) statusMsgEl.textContent = t('jailbreakStarted');
+    updateProgress(0, t('jailbreakStarted'));
     startProgressDriver();
     startElapsed();
 
@@ -1487,7 +1497,7 @@
     var picked = pickExploit();
     if (!picked) {
       setMeta(fw ? fw.str : '-', 'unsupported');
-      finishProgressFail('Jailbreak failed - restart your console');
+      finishProgressFail(t('jailbreakFail'));
       return;
     }
     exploitMode = picked;
@@ -1556,7 +1566,7 @@
     if (!el) return;
     var fw = detectFirmware();
     if (!fw) {
-      el.textContent = 'Console not detected';
+      el.textContent = t('consoleNotDetected');
       el.className = 'detect-title unsupported';
       return;
     }
@@ -1566,10 +1576,10 @@
     else if (RELAPSE_FIRMWARES.indexOf(fw.str) !== -1
       || (fw.num >= 7.0 && fw.num <= 13.60)) chain = 'relapse';
     if (chain) {
-      el.textContent = 'PS5 FW ' + fw.str + ' · chain ' + formatChainLabel(chain);
+      el.textContent = t('fwChain', { fw: fw.str, chain: formatChainLabel(chain) });
       el.className = 'detect-title';
     } else {
-      el.textContent = 'PS5 FW ' + fw.str + ' · not supported';
+      el.textContent = t('fwUnsupported', { fw: fw.str });
       el.className = 'detect-title unsupported';
     }
   }
@@ -1611,7 +1621,7 @@
       }
       if (go && !chainStarted) {
         go.disabled = false;
-        go.textContent = 'Start Jailbreak';
+        go.textContent = t('startJailbreak');
       }
       if (cancel) cancel.hidden = true;
     }
@@ -1620,7 +1630,7 @@
       if (chainStarted || autoTimer || !go) return;
       autoRemaining = 3;
       go.disabled = true;
-      go.textContent = 'Starting in ' + autoRemaining + '\u2026';
+      go.textContent = t('startingIn', { n: autoRemaining });
       if (cancel) cancel.hidden = false;
       autoTimer = setInterval(function () {
         autoRemaining -= 1;
@@ -1628,12 +1638,12 @@
           clearInterval(autoTimer);
           autoTimer = 0;
           if (cancel) cancel.hidden = true;
-          go.textContent = 'Starting\u2026';
+          go.textContent = t('starting');
           saveLauncherChoice(launcherChoice);
           start();
           return;
         }
-        go.textContent = 'Starting in ' + autoRemaining + '\u2026';
+        go.textContent = t('startingIn', { n: autoRemaining });
       }, 1000);
     }
 
@@ -1683,5 +1693,24 @@
   /* Wait for the user to pick Payload Manager vs elf-launcher on the splash
      before arming the exploit. A saved Auto-start preference arms a short
      cancellable countdown instead. */
-  window.addEventListener('load', bindLauncherChoiceUi);
+  window.wkalAfterLangChange = function () {
+    updateDetectUi();
+    /* Refresh Start / Cancel labels if countdown is idle. */
+    var go = document.getElementById('startJailbreak');
+    var cancel = document.getElementById('cancelAutoStart');
+    if (go && !chainStarted && !go.disabled) {
+      go.textContent = t('startJailbreak');
+    }
+    if (cancel) cancel.textContent = t('cancel');
+    if (elapsedMsgEl && !elapsedTimer) {
+      elapsedMsgEl.textContent = t('elapsed', { t: '0:00' });
+    }
+  };
+
+  window.addEventListener('load', function () {
+    if (window.WKAL_I18N && typeof window.WKAL_I18N.bindLangUi === 'function') {
+      window.WKAL_I18N.bindLangUi();
+    }
+    bindLauncherChoiceUi();
+  });
 })();

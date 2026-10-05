@@ -27,19 +27,123 @@
     body.done #progressBar{-webkit-transform:scaleX(1)!important;transform:scaleX(1)!important;background:#22c55e;background:-webkit-linear-gradient(90deg,#15803d 0%,#16a34a 40%,#22c55e 70%,#86efac 100%);background:linear-gradient(90deg,#15803d 0%,#16a34a 40%,#22c55e 70%,#86efac 100%);-webkit-box-shadow:0 0 14px rgba(34,197,94,.55);box-shadow:0 0 14px rgba(34,197,94,.55)}
     #footer{position:fixed;left:0;right:0;bottom:10px;text-align:center;font-size:12px;color:#fff;letter-spacing:.08em;pointer-events:none;line-height:1.5;text-shadow:0 0 12px rgba(255,255,255,.35);z-index:20}
     #footer b{color:#fff;font-weight:600}
+
+    #langbox{position:relative;width:min(420px,78vw);margin-top:14px;z-index:40}
+    #langbtn{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-align:center;-webkit-align-items:center;align-items:center;-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center;gap:8px;width:100%;box-sizing:border-box;border:0;cursor:pointer;color:#fff;font:inherit;font-size:14px;font-weight:800;padding:10px 12px;border-radius:999px;background:-webkit-linear-gradient(#2c6aa0,#123a5e);background:linear-gradient(#2c6aa0,#123a5e);-webkit-box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #06111c;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #06111c}
+    .flag{display:inline-block;width:28px;height:19px;-webkit-flex:0 0 28px;flex:0 0 28px;border-radius:3px;overflow:hidden;-webkit-box-shadow:0 0 0 1px rgba(255,255,255,.35);box-shadow:0 0 0 1px rgba(255,255,255,.35)}
+    .flag svg{display:block;width:100%;height:100%}
+    #langlist{display:none;position:absolute;left:0;right:0;bottom:calc(100% + 8px);z-index:60;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px;border-radius:16px;background:-webkit-linear-gradient(#123a5e,#071624);background:linear-gradient(#123a5e,#071624);border:2px solid #7ec8ff;-webkit-box-shadow:0 12px 30px rgba(0,0,0,.6);box-shadow:0 12px 30px rgba(0,0,0,.6);box-sizing:border-box}
+    #langlist.show{display:-ms-grid;display:grid}
+    .langopt{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-align:center;-webkit-align-items:center;align-items:center;gap:10px;width:100%;box-sizing:border-box;border:0;cursor:pointer;color:#eaf6ff;font:inherit;font-size:14px;font-weight:800;padding:7px 10px;border-radius:10px;text-align:left;background:-webkit-linear-gradient(#1a4d7a,#0c2c4a);background:linear-gradient(#1a4d7a,#0c2c4a)}
+    .langopt[data-state="on"]{background:-webkit-linear-gradient(#7ec8ff,#1c82e4 55%,#0a4d94);background:linear-gradient(#7ec8ff,#1c82e4 55%,#0a4d94);-webkit-box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 0 0 2px #fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 0 0 2px #fff}
+    main[dir="rtl"] #statusMsg,main[dir="rtl"] #elapsedMsg,main[dir="rtl"] #successMsg{text-align:right}
   </style>
 </head>
 <body>
   <div id="bg" aria-hidden="true"></div>
   <main>
-    <p id="statusMsg">Installing…</p>
+    <p id="statusMsg" data-i18n="installing">Installing…</p>
     <div id="progressContainer"><div id="progressBar"></div></div>
     <div id="progressPct">0%</div>
     <p id="elapsedMsg">Elapsed 0:00</p>
-    <div id="successMsg"><span class="check" aria-hidden="true"></span>Updated successfully<br>Opening WK Autoloader…</div>
+    <div id="langbox"><button type="button" id="langbtn" aria-haspopup="true"><span class="flag" id="langflag"></span><span data-i18n="language">Language</span></button><div id="langlist" role="menu" data-state="closed"></div></div>
+    <div id="successMsg"><span class="check" aria-hidden="true"></span><span data-i18n="installSuccess" data-i18n-html="1">Updated successfully<br>Opening WK Autoloader…</span></div>
   </main>
-  <footer id="footer"><b>Created by X-F1REBALL-X</b></footer>
+  <footer id="footer"><b data-i18n="credit">Created by X-F1REBALL-X</b></footer>
+  
   <script>
+  (function(global){
+    'use strict';
+    var LANGS=[{"code": "en", "name": "English", "flag": "us"}, {"code": "ar", "name": "العربية", "flag": "sa", "rtl": true}, {"code": "es", "name": "Español", "flag": "es"}, {"code": "fr", "name": "Français", "flag": "fr"}, {"code": "de", "name": "Deutsch", "flag": "de"}, {"code": "pt", "name": "Português", "flag": "br"}, {"code": "ru", "name": "Русский", "flag": "ru"}, {"code": "ja", "name": "日本語", "flag": "jp"}, {"code": "zh", "name": "中文", "flag": "cn"}, {"code": "it", "name": "Italiano", "flag": "it"}];
+    var FLAGS={"us": "<svg viewBox=\"0 0 30 20\"><rect width=\"30\" height=\"20\" fill=\"#fff\"/><g fill=\"#b22234\"><rect width=\"30\" height=\"1.54\"/><rect y=\"3.08\" width=\"30\" height=\"1.54\"/><rect y=\"6.15\" width=\"30\" height=\"1.54\"/><rect y=\"9.23\" width=\"30\" height=\"1.54\"/><rect y=\"12.3\" width=\"30\" height=\"1.54\"/><rect y=\"15.4\" width=\"30\" height=\"1.54\"/><rect y=\"18.46\" width=\"30\" height=\"1.54\"/></g><rect width=\"13\" height=\"10.77\" fill=\"#3c3b6e\"/><g fill=\"#fff\"><circle cx=\"2.5\" cy=\"2.2\" r=\".7\"/><circle cx=\"6.5\" cy=\"2.2\" r=\".7\"/><circle cx=\"10.5\" cy=\"2.2\" r=\".7\"/><circle cx=\"4.5\" cy=\"5.4\" r=\".7\"/><circle cx=\"8.5\" cy=\"5.4\" r=\".7\"/><circle cx=\"2.5\" cy=\"8.6\" r=\".7\"/><circle cx=\"6.5\" cy=\"8.6\" r=\".7\"/><circle cx=\"10.5\" cy=\"8.6\" r=\".7\"/></g></svg>", "sa": "<svg viewBox=\"0 0 30 20\"><rect width=\"30\" height=\"20\" fill=\"#006c35\"/><path d=\"M8 8.5h14M9 10c2 .8 4 .8 6 0s4-.8 6 0\" stroke=\"#fff\" stroke-width=\"1.1\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M8 14h13l1.5-1\" stroke=\"#fff\" stroke-width=\"1\" fill=\"none\" stroke-linecap=\"round\"/></svg>", "es": "<svg viewBox=\"0 0 30 20\"><rect width=\"30\" height=\"20\" fill=\"#aa151b\"/><rect y=\"5\" width=\"30\" height=\"10\" fill=\"#f1bf00\"/></svg>", "fr": "<svg viewBox=\"0 0 30 20\"><rect width=\"10\" height=\"20\" fill=\"#0055a4\"/><rect x=\"10\" width=\"10\" height=\"20\" fill=\"#fff\"/><rect x=\"20\" width=\"10\" height=\"20\" fill=\"#ef4135\"/></svg>", "de": "<svg viewBox=\"0 0 30 20\"><rect width=\"30\" height=\"6.67\" fill=\"#000\"/><rect y=\"6.67\" width=\"30\" height=\"6.67\" fill=\"#dd0000\"/><rect y=\"13.33\" width=\"30\" height=\"6.67\" fill=\"#ffce00\"/></svg>", "br": "<svg viewBox=\"0 0 30 20\"><rect width=\"30\" height=\"20\" fill=\"#009c3b\"/><path d=\"M15 2.5L27 10 15 17.5 3 10z\" fill=\"#ffdf00\"/><circle cx=\"15\" cy=\"10\" r=\"4.2\" fill=\"#002776\"/><path d=\"M11 9.3c2.7-.6 5.6-.3 8 .9\" stroke=\"#fff\" stroke-width=\".7\" fill=\"none\"/></svg>", "ru": "<svg viewBox=\"0 0 30 20\"><rect width=\"30\" height=\"6.67\" fill=\"#fff\"/><rect y=\"6.67\" width=\"30\" height=\"6.67\" fill=\"#0039a6\"/><rect y=\"13.33\" width=\"30\" height=\"6.67\" fill=\"#d52b1e\"/></svg>", "jp": "<svg viewBox=\"0 0 30 20\"><rect width=\"30\" height=\"20\" fill=\"#fff\"/><circle cx=\"15\" cy=\"10\" r=\"6\" fill=\"#bc002d\"/></svg>", "cn": "<svg viewBox=\"0 0 30 20\"><rect width=\"30\" height=\"20\" fill=\"#de2910\"/><path d=\"M5 2.5l1.18 3.6H10l-3.1 2.2 1.2 3.6L5 9.7l-3.1 2.2 1.2-3.6L0 6.1h3.8z\" fill=\"#ffde00\"/><g fill=\"#ffde00\"><circle cx=\"11\" cy=\"2.5\" r=\".9\"/><circle cx=\"13\" cy=\"4.6\" r=\".9\"/><circle cx=\"13\" cy=\"7.6\" r=\".9\"/><circle cx=\"11\" cy=\"9.6\" r=\".9\"/></g></svg>", "it": "<svg viewBox=\"0 0 30 20\"><rect width=\"10\" height=\"20\" fill=\"#009246\"/><rect x=\"10\" width=\"10\" height=\"20\" fill=\"#fff\"/><rect x=\"20\" width=\"10\" height=\"20\" fill=\"#ce2b37\"/></svg>"};
+    var I18N={"en": {"language": "Language", "langSet": "Language: English", "credit": "Created by X-F1REBALL-X", "installing": "Installing…", "installSuccess": "Updated successfully\nOpening WK Autoloader…", "elapsed": "Elapsed {t}", "cancel": "Cancel"}, "ar": {"language": "اللغة", "langSet": "اللغة: العربية", "credit": "من إعداد X-F1REBALL-X", "installing": "جارٍ التثبيت…", "installSuccess": "تم التحديث بنجاح\nجارٍ فتح WK Autoloader…", "elapsed": "الوقت المنقضي {t}", "cancel": "إلغاء"}, "es": {"language": "Idioma", "langSet": "Idioma: Español", "credit": "Creado por X-F1REBALL-X", "installing": "Instalando…", "installSuccess": "Actualizado correctamente\nAbriendo WK Autoloader…", "elapsed": "Transcurrido {t}", "cancel": "Cancelar"}, "fr": {"language": "Langue", "langSet": "Langue : Français", "credit": "Créé par X-F1REBALL-X", "installing": "Installation…", "installSuccess": "Mise à jour réussie\nOuverture de WK Autoloader…", "elapsed": "Écoulé {t}", "cancel": "Annuler"}, "de": {"language": "Sprache", "langSet": "Sprache: Deutsch", "credit": "Erstellt von X-F1REBALL-X", "installing": "Installation…", "installSuccess": "Erfolgreich aktualisiert\nWK Autoloader wird geöffnet…", "elapsed": "Vergangen {t}", "cancel": "Abbrechen"}, "pt": {"language": "Idioma", "langSet": "Idioma: Português", "credit": "Criado por X-F1REBALL-X", "installing": "Instalando…", "installSuccess": "Atualizado com sucesso\nAbrindo WK Autoloader…", "elapsed": "Decorrido {t}", "cancel": "Cancelar"}, "ru": {"language": "Язык", "langSet": "Язык: Русский", "credit": "Автор: X-F1REBALL-X", "installing": "Установка…", "installSuccess": "Успешно обновлено\nОткрытие WK Autoloader…", "elapsed": "Прошло {t}", "cancel": "Отмена"}, "ja": {"language": "言語", "langSet": "言語: 日本語", "credit": "制作: X-F1REBALL-X", "installing": "インストール中…", "installSuccess": "更新に成功しました\nWK Autoloader を開いています…", "elapsed": "経過 {t}", "cancel": "キャンセル"}, "zh": {"language": "语言", "langSet": "语言：中文", "credit": "作者：X-F1REBALL-X", "installing": "正在安装…", "installSuccess": "更新成功\n正在打开 WK Autoloader…", "elapsed": "已用时 {t}", "cancel": "取消"}, "it": {"language": "Lingua", "langSet": "Lingua: Italiano", "credit": "Creato da X-F1REBALL-X", "installing": "Installazione…", "installSuccess": "Aggiornato correttamente\nApertura di WK Autoloader…", "elapsed": "Trascorso {t}", "cancel": "Annulla"}};
+    var LANG='en';
+    var LS_LANG_KEY='ps5elfs-lang';
+    function langInfo(code){ var i; for(i=0;i<LANGS.length;i++){ if(LANGS[i].code===code) return LANGS[i]; } return LANGS[0]; }
+    function t(key, vars){
+      var d=I18N[LANG]||I18N.en, s=d[key];
+      if(s==null) s=I18N.en[key];
+      if(s==null) s=key;
+      if(vars) s=String(s).replace(/\{(\w+)\}/g,function(m,k){ return vars[k]!=null?String(vars[k]):m; });
+      return s;
+    }
+    function readLang(){
+      var v='', m;
+      try{ v=localStorage.getItem(LS_LANG_KEY)||''; }catch(e){}
+      if(!v){ try{ m=document.cookie.match(/(?:^|; )ps5elfs-lang=([a-z]{2})/); if(m) v=m[1]; }catch(e2){} }
+      if(v==='he') v='en';
+      return I18N[v]?v:'en';
+    }
+    function saveLang(code){
+      try{ localStorage.setItem(LS_LANG_KEY, code); }catch(e){}
+      try{ sessionStorage.setItem(LS_LANG_KEY, code); }catch(e2){}
+      try{ document.cookie='ps5elfs-lang='+code+'; path=/; max-age=31536000'; }catch(e3){}
+    }
+    function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function applyStaticI18n(){
+      var info=langInfo(LANG), nodes, i, k, mainEl=document.querySelector('main'), fl=document.getElementById('langflag');
+      try{ document.documentElement.setAttribute('lang', LANG); }catch(e){}
+      if(mainEl){ if(info.rtl) mainEl.setAttribute('dir','rtl'); else mainEl.removeAttribute('dir'); }
+      nodes=document.querySelectorAll('[data-i18n]');
+      for(i=0;i<nodes.length;i++){
+        k=nodes[i].getAttribute('data-i18n');
+        if(nodes[i].getAttribute('data-i18n-html')==='1'){
+          nodes[i].innerHTML=t(k).replace(/\n/g,'<br>');
+        } else {
+          nodes[i].textContent=t(k);
+        }
+      }
+      if(fl) fl.innerHTML=FLAGS[info.flag]||'';
+      renderLangList();
+    }
+    function renderLangList(){
+      var box=document.getElementById('langlist'), html='', i, L;
+      if(!box) return;
+      for(i=0;i<LANGS.length;i++){
+        L=LANGS[i];
+        html+='<button type="button" class="langopt" role="menuitem" data-lang="'+L.code+'" data-state="'+(L.code===LANG?'on':'off')+'"'+(L.rtl?' dir="rtl"':'')+'><span class="flag">'+(FLAGS[L.flag]||'')+'</span><span>'+esc(L.name)+'</span></button>';
+      }
+      box.innerHTML=html;
+      var opts=box.querySelectorAll('.langopt');
+      for(i=0;i<opts.length;i++){
+        opts[i].onclick=function(){ setLang(this.getAttribute('data-lang')); toggleLangList(false); return false; };
+      }
+    }
+    function toggleLangList(force){
+      var box=document.getElementById('langlist'), on;
+      if(!box) return;
+      on=(force===true||force===false)?force:box.getAttribute('data-state')!=='open';
+      box.setAttribute('data-state', on?'open':'closed');
+      box.className=on?'show':'';
+    }
+    function setLang(code){
+      if(!I18N[code]) code='en';
+      LANG=code; saveLang(code); applyStaticI18n();
+      try{
+        var el=document.getElementById('elapsedMsg');
+        if(el && typeof window.__wkalRefreshElapsed==='function') window.__wkalRefreshElapsed();
+        var st=document.getElementById('statusMsg');
+        if(st && !document.body.className) st.textContent=t('installing');
+      }catch(e){}
+    }
+    function bindLangUi(){
+      LANG=readLang(); applyStaticI18n();
+      var btn=document.getElementById('langbtn');
+      if(btn) btn.addEventListener('click', function(ev){ try{ev.stopPropagation();}catch(e){} toggleLangList(); return false; });
+      document.addEventListener('click', function(ev){
+        var box=document.getElementById('langbox'), list=document.getElementById('langlist');
+        if(!list || list.getAttribute('data-state')!=='open') return;
+        if(box && box.contains(ev.target)) return;
+        toggleLangList(false);
+      });
+    }
+    global.WKAL_I18N={ t:t, setLang:setLang, bindLangUi:bindLangUi, getLang:function(){return LANG;} };
+    global.t=t;
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bindLangUi);
+    else bindLangUi();
+  })(window);
+  </script>
+<script>
   (function(){
     'use strict';
     var statusEl=document.getElementById('statusMsg');
@@ -82,10 +186,10 @@
     function startElapsed(){
       if(elapsedTimer) return;
       elapsedStart=Date.now();
-      if(elapsedMsgEl) elapsedMsgEl.textContent='Elapsed 0:00';
+      if(elapsedMsgEl) elapsedMsgEl.textContent=(window.t?t('elapsed',{t:'0:00'}):'Elapsed 0:00');
       elapsedTimer=setInterval(function(){
         if(!elapsedMsgEl) return;
-        elapsedMsgEl.textContent='Elapsed '+formatElapsed(Date.now()-elapsedStart);
+        elapsedMsgEl.textContent=(window.t?t('elapsed',{t:formatElapsed(Date.now()-elapsedStart)}):('Elapsed '+formatElapsed(Date.now()-elapsedStart)));
       },1000);
     }
     function stopElapsed(){
@@ -103,7 +207,7 @@
     }
     function refreshStatus(){
       if(completed) return;
-      statusEl.textContent='Installing…';
+      statusEl.textContent=(window.t?t('installing'):'Installing…');
     }
     function setCaching(){ refreshStatus(); }
     function cacheStatus(){
