@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  /* Release tree marker: v1.0.3. */
+  /* Release tree marker: v1.0.4. */
 
   /* i18n: prefer WKAL_I18N.t from i18n.js; fall back to English key text. */
   function t(key, vars) {
@@ -682,6 +682,7 @@
       /* Mark JB done BEFORE waiting on HTTP open - open timeout must not
          look like a stuck jailbreak. */
       finishProgressSuccess(t('jailbreakSuccess'));
+      maybeApplyPendingSelfUpdate('autoload-ok');
 
       /* Keep exploit iframe alive until HTTP open / resend finishes.
          Never blank it before top.location.replace — clearing mid-payload
@@ -1341,6 +1342,7 @@
         p2jbComplete = true;
         bumpProgressFloor(95);
         uiLog('[p2jb] exploit complete - elfldr ready.', 'success');
+        maybeApplyPendingSelfUpdate('p2jb-elfldr');
         /* Pin the panel green at 100% until the autoload result lands, then
            onAutoloadResult collapses back to the classic full-height log.
            The iframe stays loaded - it holds the ROP workers/threads. */
@@ -1435,7 +1437,10 @@
       else if (/ARW ready|WebKit base/.test(textLine)) bumpProgressFloor(32);
       else if (/Worker/.test(textLine)) bumpProgressFloor(48);
       else if (/kernel/.test(textLine)) bumpProgressFloor(70);
-      else if (/elfldr|listening on port 9021/.test(textLine)) bumpProgressFloor(88);
+      else if (/elfldr|listening on port 9021/.test(textLine)) {
+        bumpProgressFloor(88);
+        maybeApplyPendingSelfUpdate('relapse-elfldr');
+      }
       uiLog('[relapse] ' + textLine, kind);
     }
   }
@@ -1456,7 +1461,8 @@
   }
 
   function start() {
-    hideSelfUpdateBanner();
+    /* Keep the banner if Update was queued for after jailbreak. */
+    if (!pendingSelfUpdate) hideSelfUpdateBanner();
     /* Explicit splash choice only. Anything else is wkal-skip.
        Elf Launcher Hybrid: probe :1000 first — up => open-only; down => send tip. */
     launcherHttpOpenStarted = false;
@@ -1708,6 +1714,8 @@
   var SELFUPD_ASSET = 'wk-dual-payload.elf';
   var selfUpdateInfo = null;
   var selfUpdateMsgTimer = 0;
+  var pendingSelfUpdate = false;
+  var selfUpdateSent = false;
 
   function semverParts(v) {
     v = String(v || '').replace(/^\s+|\s+$/g, '').replace(/^[vV]/, '');
@@ -1859,24 +1867,66 @@
     });
   }
 
+  function ensureSelfUpdateBannerVisible() {
+    var box = document.getElementById('selfupd');
+    if (box) box.classList.add('show');
+  }
+
+  /* Elf-style: Image + hidden iframe GET to elfldr. Mixed-content safe on
+     https Pages; on http :1022 WebKit often rejects fetch(no-cors) even when
+     elfldr is up, so never treat network failure as "elfldr not running". */
   function sendUrlToElfldr(fileUrl, cb) {
     var target = 'http://127.0.0.1:9021/?uri=' + encodeURIComponent(fileUrl);
     var done = false;
-    function fin(ok) { if (done) return; done = true; cb(ok); }
-    /* http pages (:1022 / PC host) can confirm with fetch; https Pages uses an
-       image ping like Elf Launcher (mixed-content safe, unconfirmed). */
-    if (location.protocol === 'http:' && typeof fetch === 'function') {
-      fetch(target, { method: 'GET', mode: 'no-cors', cache: 'no-store' })
-        .then(function () { fin(true); })
-        .catch(function () { fin(false); });
-      setTimeout(function () { fin(true); }, 6000);
-      return;
+    function fin(ok) { if (done) return; done = true; if (typeof cb === 'function') cb(!!ok); }
+    function ping(n) {
+      var src = target + (target.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now() + 'n' + n;
+      try {
+        var img = new Image();
+        img.onload = function () { fin(true); };
+        img.onerror = function () { fin(true); };
+        img.src = src;
+      } catch (e0) { }
+      try {
+        var iframe = document.createElement('iframe');
+        iframe.setAttribute('aria-hidden', 'true');
+        iframe.style.cssText = 'position:absolute;width:0;height:0;border:0;left:-9999px;top:-9999px;visibility:hidden';
+        iframe.src = src;
+        (document.body || document.documentElement).appendChild(iframe);
+        setTimeout(function () {
+          try { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); } catch (e1) { }
+        }, 8000);
+      } catch (e2) { }
     }
-    var img = new Image();
-    img.onload = function () { fin(true); };
-    img.onerror = function () { fin(true); };
-    img.src = target;
-    setTimeout(function () { fin(true); }, 1500);
+    ping(0);
+    setTimeout(function () { ping(1); }, 350);
+    setTimeout(function () { ping(2); }, 900);
+    setTimeout(function () { fin(true); }, 1600);
+  }
+
+  function applySelfUpdateNow(reason) {
+    var info = selfUpdateInfo;
+    var btn = document.getElementById('selfupddl');
+    if (!info || !info.url || selfUpdateSent) return;
+    selfUpdateSent = true;
+    pendingSelfUpdate = false;
+    ensureSelfUpdateBannerVisible();
+    if (btn) btn.disabled = true;
+    selfUpdateMessage(t('selfUpdating', { ver: info.version }));
+    uiLog('[update] applying ' + info.version + (reason ? ' (' + reason + ')' : ''), 'info');
+    sendUrlToElfldr(info.url, function () {
+      if (btn) btn.disabled = false;
+      rememberSelfUpdateDismiss(info.version);
+      selfUpdateMessage(t('selfUpdated', { ver: info.version }), 8000);
+    });
+  }
+
+  /* After JB / elfldr ready: flush a queued Update click once. */
+  function maybeApplyPendingSelfUpdate(reason) {
+    if (!pendingSelfUpdate || !selfUpdateInfo || !selfUpdateInfo.url || selfUpdateSent) return;
+    /* Do not race the tip ELF send - wait for autoload-ok while tip is in flight. */
+    if (autoloadPending && reason !== 'autoload-ok') return;
+    applySelfUpdateNow(reason || 'after-jb');
   }
 
   function downloadSelfUpdate() {
@@ -1884,17 +1934,19 @@
     var btn = document.getElementById('selfupddl');
     if (!info) return;
     if (/PlayStation/i.test(navigator.userAgent) && info.url) {
-      if (btn) btn.disabled = true;
-      selfUpdateMessage(t('selfUpdating', { ver: info.version }));
-      sendUrlToElfldr(info.url, function (ok) {
-        if (btn) btn.disabled = false;
-        if (ok) {
-          rememberSelfUpdateDismiss(info.version);
-          selfUpdateMessage(t('selfUpdated', { ver: info.version }), 8000);
-        } else {
-          selfUpdateMessage(t('selfUpdateFail', { msg: t('selfUpdateNoElfldr') }));
-        }
-      });
+      /* Before this-session JB finishes: queue + speculative ping (prior
+         elfldr may already be up). Never leave a hard "elfldr not running"
+         dead-end - the queued send fires when autoload / elfldr is ready. */
+      if (!finished) {
+        pendingSelfUpdate = true;
+        if (btn) btn.disabled = true;
+        ensureSelfUpdateBannerVisible();
+        selfUpdateMessage(t('selfUpdateAfterJb'));
+        uiLog('[update] queued ' + info.version + ' until jailbreak / elfldr ready', 'info');
+        sendUrlToElfldr(info.url, function () { /* speculative; pending still applies after JB */ });
+        return;
+      }
+      applySelfUpdateNow('manual');
       return;
     }
     try { window.open(info.url || info.page || SELFUPD_RELEASES_URL, '_blank'); } catch (e) { }
