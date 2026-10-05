@@ -37,7 +37,7 @@ fi
 rm -f "$BUILD_LOG"
 echo "      ELF build successful."
 
-# Publish name matches the GitLab repo / Release asset
+# Publish name matches the GitHub repo / Release asset
 if [ -f "$BUILD_ELF" ]; then
     cp -f "$BUILD_ELF" "$ELF"
 elif [ ! -f "$ELF" ]; then

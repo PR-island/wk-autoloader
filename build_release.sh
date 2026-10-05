@@ -66,6 +66,6 @@ mv webkit-autoloader-host.py "$HOST_PY"
 echo "      Created: $HOST_PY"
 
 echo "--- Build Complete! ---"
-echo "Note: publish as wk-dual-payload.elf on GitLab Packages/Releases."
+echo "Note: publish as wk-dual-payload.elf on GitHub Releases."
 ls -la "$OUTPUT_ELF" "$HOST_PY"
 
