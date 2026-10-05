@@ -3,12 +3,12 @@ Dual Payload
 
 ## Preview
 
-![WK Dual Payload preview](docs/screenshots/home.png)
+![WK Autoloader preview](docs/screenshots/home.png)
 
 PS5 homebrew: jailbreak UI on port **1022**. Chains: **umtx2** (1-5.50), **relapse** (7.00-13.60).
 
-- Pages: https://x-f1reball-x.github.io/wk-dual-payload/
-- Download ELF: https://github.com/X-F1REBALL-X/wk-dual-payload/releases/latest
+- Pages: https://x-f1reball-x.github.io/WK-Autoloader/
+- Download ELF: https://github.com/X-F1REBALL-X/WK-Autoloader/releases/latest
 
 ## What the ELF does
 
@@ -20,7 +20,7 @@ After the jailbreak, the page installs [Elf Launcher](https://github.com/X-F1REB
 
 1. Soft jailbreak the console and start **elfldr** on port **9021**.
 2. Send `wk-dual-payload.elf` to `9021` and wait until caching and install finish.
-3. Open `http://PS5_IP:1022`, or the [Pages host](https://x-f1reball-x.github.io/wk-dual-payload/). The home icon works offline after install.
+3. Open `http://PS5_IP:1022`, or the [Pages host](https://x-f1reball-x.github.io/WK-Autoloader/). The home icon works offline after install.
 4. On the splash, pick Payload Manager or Elf Launcher, then press **Start Jailbreak**. The choice is saved on the console.
 
 ## Payload loaders
@@ -32,7 +32,7 @@ After the jailbreak, the page installs [Elf Launcher](https://github.com/X-F1REB
 
 | Port | Role |
 |------|------|
-| **1022** | WK Dual Payload |
+| **1022** | WK Autoloader |
 | **9021** | elfldr, send `wk-dual-payload.elf` and other ELFs |
 | **8084** | Payload Manager |
 | **1000** | [Elf Launcher](https://github.com/X-F1REBALL-X/elf-launcher) |
