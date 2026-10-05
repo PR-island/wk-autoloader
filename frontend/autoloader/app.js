@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  /* Release tree marker: v1.0.5. */
+  /* Release tree marker: v1.0.6. */
 
   /* i18n: prefer WKAL_I18N.t from i18n.js; fall back to English key text. */
   function t(key, vars) {
