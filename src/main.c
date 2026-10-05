@@ -210,11 +210,8 @@ int main(void) {
      * each only when missing. Never autoload unrelated payloads here. */
     wkali_install_companions();
 
-    if (wkali_page_installed()) {
-        wkali_log("[WKALI] Page already installed. Skipping browser and install.\n");
-        wkali_notify("WK Autoloader already installed");
-        return 0;
-    }
+    /* Always open the versioned browser URL and keep the server loop, even when
+     * the WK Autoloader page is already on disk — force refresh / reinstall. */
 
     /* Launch the browser at a versioned URL so the old AppCache master entry
      * for "/" is never served from the previous install. */

@@ -118,14 +118,13 @@ int wkali_install_app(void) {
            title_id);
 
   if (wkali_page_installed()) {
-    wkali_log("[WKALI] Page already installed (%s). Not installing again.\n",
+    wkali_log("[WKALI] Page already present (%s). Reinstalling/updating...\n",
               title_id);
-    wkali_notify("WK Autoloader already installed");
-    return 0;
+    wkali_notify("Updating WK Autoloader...");
+  } else {
+    wkali_log("[WKALI] Installing browser launcher app (%s)...\n", title_id);
+    wkali_notify("Installing WK Autoloader...");
   }
-
-  wkali_log("[WKALI] Installing browser launcher app (%s)...\n", title_id);
-  wkali_notify("Installing WK Autoloader...");
 
   int err;
   if ((err = sceAppInstUtilInitialize())) {
