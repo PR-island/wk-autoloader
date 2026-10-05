@@ -50,7 +50,7 @@ ELFLAUNCHER_TAG="1.0.0"
 # Current console binary. Always send it. A live :1000 is not a skip:
 # the ELF applies Open or Leave closed and loads Auto when closed.
 # Prefer launcher/elf-launcher.elf (current HOME_ICON_VERSION) over stale docs/launcher trees.
-ELFLAUNCHER_PINNED_SHA=0ecf304a26f4b67c1cc11818b3af5a02e78da1733093480061a7d5d00db72fb6
+ELFLAUNCHER_PINNED_SHA=95573acb3930760bba963a5826f1561ca4d7c49872670b444903d2ff274a5118
 ELFLAUNCHER_DEST="$ROOT/frontend/autoloader/payloads/elf-launcher.elf"
 ELFLAUNCHER_LOCAL_CANDIDATES=(
     "/workspace/elf-launcher/launcher/elf-launcher.elf"

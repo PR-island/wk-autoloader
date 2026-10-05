@@ -91,8 +91,8 @@
      Recorded after a successful send for diagnostics only. If :1000 already
      answers, do not send elf-launcher.elf again. Open http://127.0.0.1:1000/
      only when the ps5elfs-browser cookie is exactly open. */
-  var BUNDLED_ELFLAUNCHER_SHA = '84a92f5371809d440d88cba55ee72fe8479e6284891f1863980e36419eec71ca';
-  var BUNDLED_ELFLAUNCHER_VER = '1.0.47-test';
+  var BUNDLED_ELFLAUNCHER_SHA = '95573acb3930760bba963a5826f1561ca4d7c49872670b444903d2ff274a5118';
+  var BUNDLED_ELFLAUNCHER_VER = '1.1.0';
   var LS_ELFLAUNCHER_SHA = 'wkal_elf_launcher_sha';
   var LS_ELFLAUNCHER_VER = 'wkal_elf_launcher_ver';
   var launcherChoice = CHOICE_ELF_LAUNCHER;
