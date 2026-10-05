@@ -274,8 +274,7 @@ if ! pldmgr_from_local; then
 fi
 if [ -f "$PLDMGR_DEST" ]; then
   PLDMGR_SHA=$(sha256sum "$PLDMGR_DEST" | awk '{print $1}')
-  printf '%s %s
-' "$PLDMGR_TAG" "$PLDMGR_SHA" > "$PLDMGR_DEST.sha256"
+  printf '%s %s\n' "$PLDMGR_TAG" "$PLDMGR_SHA" > "$PLDMGR_DEST.sha256"
 fi
 
 # Prefer the local elf-launcher only when it is newer than the bundled copy.
