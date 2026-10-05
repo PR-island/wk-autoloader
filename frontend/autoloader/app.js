@@ -108,7 +108,7 @@
   var CHOICE_ELF_LAUNCHER = 'elf-launcher';
   /* Generated from payloads/elf-launcher.elf.sha256 by payload-deps.
      Diagnostics only after a successful hybrid-down send. */
-  var BUNDLED_ELFLAUNCHER_SHA = 'dbb2ce95083e0c6f0387d5391df3103f6970a8613839de8f71a7a5a005856bdd';
+  var BUNDLED_ELFLAUNCHER_SHA = 'd9da57df57e3e49dc2ca2ebc7f73bbc98bf16021eaeccb83e836801ddf46b71f';
   var BUNDLED_ELFLAUNCHER_VER = 'tip';
   var launcherChoice = null;
   var elfHttpAlreadyUp = false;
@@ -628,7 +628,13 @@
     launcherHttpOpenStarted = true;
     /* Home-icon URL (no cache-bust) — query strings break Elf Launcher assets. */
     if (elfHttpAlreadyUp) {
-      uiLog('Elf Launcher :1000 already up - opening (no ELF send) ...', 'success');
+      uiLog('Elf Launcher :1000 already up - trigger Auto then open ...', 'success');
+      /* Open-only Hybrid never re-sends ELF; ask live :1000 to run disk Auto. */
+      try {
+        fetch('http://127.0.0.1:1000/trigger-auto?t=' + Date.now(), {
+          method: 'GET', mode: 'no-cors', cache: 'no-store'
+        }).catch(function () {});
+      } catch (eTrig) {}
       openWhenHttpReady(consoleHttpBase(1000), 'elf-launcher', '1000',
         12000, 400, 400, false);
     } else {
