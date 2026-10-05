@@ -7,7 +7,7 @@
 #   third_party/ps5-elfldr             -> frontend/autoloader/shared/elfldr-ps5.elf
 #   third_party/ps5-unified-autoloader -> frontend/autoloader/payloads/payload.elf
 #   itsPLK/ps5-payload-manager@v0.5.1  -> frontend/autoloader/payloads/pldmgr.elf
-#   X-F1REBALL-X/elf-launcher@1.0.0  -> frontend/autoloader/payloads/elf-launcher.elf
+#   X-F1REBALL-X/elf-launcher@1.1.1  -> frontend/autoloader/payloads/elf-launcher.elf
 #
 # The shared elfldr is used by the slopkit chain (7.00-12.00); umtx2
 # (1.00-5.50) boots its own elfldr from the umtx2 submodule, like stock umtx2.
@@ -63,13 +63,14 @@ PLDMGR_LOCAL_CANDIDATES=(
 # Optional post-JB launcher (elf-launcher HTTP :1000, Kill APIs). Pinned
 # release; local sibling copies under /workspace/elf-launcher* win when present.
 ELFLAUNCHER_REPO="X-F1REBALL-X/elf-launcher"
-ELFLAUNCHER_TAG="1.1.0"
+ELFLAUNCHER_TAG="1.1.1"
 # Current console binary. Always send it. A live :1000 is not a skip:
 # the ELF applies Open or Leave closed and loads Auto when closed.
 # Prefer launcher/elf-launcher.elf (current HOME_ICON_VERSION) over stale docs/launcher trees.
-ELFLAUNCHER_PINNED_SHA=95573acb3930760bba963a5826f1561ca4d7c49872670b444903d2ff274a5118
+ELFLAUNCHER_PINNED_SHA=7e3ebb67d2574852224ffac43bb6a346d882188798c558801091db12e9d305b4
 ELFLAUNCHER_DEST="$ROOT/frontend/autoloader/payloads/elf-launcher.elf"
 ELFLAUNCHER_LOCAL_CANDIDATES=(
+    "$ROOT/docs/payloads/elf-launcher.elf"
     "/workspace/elf-launcher/launcher/elf-launcher.elf"
     "/workspace/elf-launcher/host/hbinstall/elf-launcher-install.elf"
     "$ROOT/../elf-launcher/launcher/elf-launcher.elf"
