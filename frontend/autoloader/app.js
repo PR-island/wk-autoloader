@@ -1472,8 +1472,17 @@
     /* Self-update Apply: jailbreak with wkal-skip only (no tip / pldmgr). */
     if (pendingSelfUpdate || updateOnlyMode) {
       updateOnlyMode = true;
-      uiLog('[update] jailbreak only - no auto ELF tip', 'info');
-      startChain(true);
+      probeElfLauncherHttp(function (up) {
+        elfHttpAlreadyUp = !!up;
+        if (up) {
+          uiLog('[update] :1000 up - jailbreak only, WK via Elf Launcher', 'info');
+          startChain(true);
+        } else {
+          uiLog('[update] :1000 down - send elf-launcher.elf so it can install WK', 'info');
+          forceAutoloadName = 'elf-launcher.elf';
+          startChain(false);
+        }
+      });
       return;
     }
     /* Explicit splash choice only. Anything else is wkal-skip.
@@ -1527,7 +1536,7 @@
     exploitMode = picked;
     setMeta(fw ? fw.str : '-', picked);
 
-    var autoloadName = skipElfSend ? 'wkal-skip' : autoloadElfName();
+    var autoloadName = forceAutoloadName || (skipElfSend ? 'wkal-skip' : autoloadElfName());
     var urls = buildExploitUrls(autoloadName);
     UMTX2_URL = urls.umtx2;
     P2JB_URL = urls.p2jb;
@@ -1727,7 +1736,8 @@
   var selfUpdateMsgTimer = 0;
   var pendingSelfUpdate = false;
   var selfUpdateSent = false;
-  var updateOnlyMode = false; /* Update path: JB + WK ELF only, no tip */
+  var updateOnlyMode = false; /* Update path: JB + WK ELF only (Elf Launcher helper) */
+  var forceAutoloadName = '';
 
   function semverParts(v) {
     v = String(v || '').replace(/^\s+|\s+$/g, '').replace(/^[vV]/, '');
@@ -1851,7 +1861,7 @@
     var cur = currentAppVersion();
     if (!cur || chainStarted) return;
     fetchJsonText(SELFUPD_GH_LATEST, function (err, text) {
-      var j, tag, assets, i, a, url = '', dismissed = '';
+      var j, tag, assets, i, a, url = '', dismissed = '', asha = '', asize = 0;
       if (err || chainStarted) return;
       try { j = JSON.parse(text); } catch (e) { return; }
       if (!j || j.draft || j.prerelease) return;
@@ -1860,12 +1870,12 @@
       assets = j.assets || [];
       for (i = 0; i < assets.length; i++) {
         a = assets[i] || {};
-        if (String(a.name || '').toLowerCase() === SELFUPD_ASSET) { url = a.browser_download_url || ''; break; }
+        if (String(a.name || '').toLowerCase() === SELFUPD_ASSET) { url = a.browser_download_url || ''; asha = String(a.digest || '').replace(/^sha256:/i, ''); asize = a.size || 0; break; }
       }
       if (!url) {
         for (i = 0; i < assets.length; i++) {
           a = assets[i] || {};
-          if (/^wk-dual-payload.*\.elf$/i.test(String(a.name || ''))) { url = a.browser_download_url || ''; break; }
+          if (/^wk-dual-payload.*\.elf$/i.test(String(a.name || ''))) { url = a.browser_download_url || ''; asha = String(a.digest || '').replace(/^sha256:/i, ''); asize = a.size || 0; break; }
         }
       }
       try { dismissed = localStorage.getItem(SELFUPD_DISMISS_KEY) || ''; } catch (e2) { }
@@ -1874,6 +1884,8 @@
         version: semverParts(tag).join('.'),
         tag: tag,
         url: url,
+        sha256: /^[0-9a-f]{64}$/i.test(asha) ? asha : '',
+        size: asize,
         page: j.html_url || SELFUPD_RELEASES_URL
       });
     });
@@ -1914,6 +1926,52 @@
     setTimeout(function () { ping(1); }, 350);
     setTimeout(function () { ping(2); }, 900);
     setTimeout(function () { fin(true); }, 1600);
+  }
+
+  /* Reliable path: Elf Launcher :1000 downloads the release asset natively
+     (follows GitHub redirects, checks sha256) then pushes raw bytes to
+     elfldr via /run. Real errors are reported; elfldr ?uri= is fallback only. */
+  var SELFUPD_DISK_NAME = 'wk-dual-payload.elf';
+  function waitForElfLauncher(maxTries, cb) {
+    var n = 0;
+    function tick() {
+      n++;
+      probeElfLauncherHttp(function (up) {
+        if (up) { cb(true); return; }
+        if (n >= maxTries) { cb(false); return; }
+        setTimeout(tick, 1000);
+      });
+    }
+    tick();
+  }
+  function installWkViaLauncher(info, cb) {
+    var base = 'http://127.0.0.1:1000';
+    var q = base + '/update?path=' + encodeURIComponent(SELFUPD_DISK_NAME) +
+      '&url=' + encodeURIComponent(info.url) +
+      '&sha256=' + encodeURIComponent(info.sha256) +
+      (info.size ? '&size=' + encodeURIComponent(String(info.size | 0)) : '') +
+      '&t=' + Date.now();
+    uiLog('[update] Elf Launcher :1000 downloading WK ' + info.version + ' ...', 'info');
+    fetch(q, { cache: 'no-store' }).then(function (r) {
+      return r.text().then(function (txt) {
+        var j = null;
+        try { j = JSON.parse(txt); } catch (e) { }
+        return { ok: r.ok, j: j, txt: txt };
+      });
+    }).then(function (u) {
+      if (!u.ok || !(u.j && u.j.ok)) {
+        cb(false, (u.j && u.j.message) || u.txt || 'download failed');
+        return;
+      }
+      uiLog('[update] downloaded ' + u.j.bytes + ' bytes - sending to elfldr ...', 'success');
+      /* /run text reply has no CORS header: no-cors still delivers the POST. */
+      fetch(base + '/run?path=' + encodeURIComponent(SELFUPD_DISK_NAME) + '&t=' + Date.now(),
+        { method: 'POST', mode: 'no-cors', cache: 'no-store' })
+        .then(function () { cb(true); })
+        .catch(function (e) { cb(false, 'run: ' + (e && e.message || e)); });
+    }).catch(function (e) {
+      cb(false, ':1000 ' + (e && e.message || e));
+    });
   }
 
   function waitForNewWkAndReload(ver) {
@@ -1989,10 +2047,28 @@
     if (btn) btn.disabled = true;
     selfUpdateMessage(t('selfUpdating', { ver: info.version }));
     uiLog('[update] applying ' + info.version + (reason ? ' (' + reason + ')' : '') + ' - WK ELF only', 'info');
-    sendUrlToElfldr(info.url, function () {
-      if (btn) btn.disabled = false;
-      selfUpdateMessage(t('selfUpdated', { ver: info.version }));
-      waitForNewWkAndReload(info.version);
+    function legacy() {
+      uiLog('[update] fallback: elfldr ?uri= (no :1000 / no sha256)', 'warning');
+      sendUrlToElfldr(info.url, function () {
+        if (btn) btn.disabled = false;
+        selfUpdateMessage(t('selfUpdated', { ver: info.version }));
+        waitForNewWkAndReload(info.version);
+      });
+    }
+    if (!info.sha256 || typeof fetch !== 'function') { legacy(); return; }
+    waitForElfLauncher(30, function (up) {
+      if (!up) { legacy(); return; }
+      installWkViaLauncher(info, function (ok, msg) {
+        if (btn) btn.disabled = false;
+        if (!ok) {
+          selfUpdateSent = false;
+          uiLog('[update] failed: ' + msg, 'error');
+          selfUpdateMessage(t('selfUpdateFail', { msg: msg }));
+          return;
+        }
+        selfUpdateMessage(t('selfUpdated', { ver: info.version }));
+        waitForNewWkAndReload(info.version);
+      });
     });
   }
 
