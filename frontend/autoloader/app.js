@@ -613,14 +613,15 @@
       try { cb(!!up); } catch (e) { }
     }
     try {
-      fetch('http://127.0.0.1:1000/?t=' + Date.now(), { method: 'GET', mode: 'no-cors', cache: 'no-store' }).then(function () {
+      /* Tiny JSON route: GET / is ~180KB and the first hit after start takes ~3s. */
+      fetch('http://127.0.0.1:1000/auto-list?t=' + Date.now(), { method: 'GET', mode: 'no-cors', cache: 'no-store' }).then(function () {
         fin(true);
       }).catch(function () { fin(false); });
     } catch (e) {
       fin(false);
       return;
     }
-    setTimeout(function () { fin(false); }, 1200);
+    setTimeout(function () { fin(false); }, 3000);
   }
 
   function openElfLauncherPage() {
@@ -2075,7 +2076,13 @@
       uiLog('[update] Elf Launcher :1000 did not start - cannot download WK', 'error');
       selfUpdateMessage(t('selfUpdateFail', { msg: 'Elf Launcher :1000 not running' }));
     }
-    waitForElfLauncher(3, function (up) {
+    /* Chain already sent elf-launcher.elf this session: just wait for :1000. */
+    if (forceAutoloadName === 'elf-launcher.elf') {
+      uiLog('[update] waiting for Elf Launcher :1000 ...', 'info');
+      waitForElfLauncher(30, function (upA) { if (upA) go(); else failNoLauncher(); });
+      return;
+    }
+    waitForElfLauncher(5, function (up) {
       if (up) { go(); return; }
       /* JB already done in this page: ask the exploit iframe to send the
          bundled elf-launcher.elf to elfldr, then wait for :1000. */
