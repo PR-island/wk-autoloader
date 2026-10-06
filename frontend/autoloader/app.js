@@ -108,7 +108,7 @@
   var CHOICE_ELF_LAUNCHER = 'elf-launcher';
   /* Generated from payloads/elf-launcher.elf.sha256 by payload-deps.
      Diagnostics only after a successful hybrid-down send. */
-  var BUNDLED_ELFLAUNCHER_SHA = 'd9da57df57e3e49dc2ca2ebc7f73bbc98bf16021eaeccb83e836801ddf46b71f';
+  var BUNDLED_ELFLAUNCHER_SHA = '0d109ace6701321e00100234304989fa7edbc861695ee70868c9696745d222e5';
   var BUNDLED_ELFLAUNCHER_VER = 'tip';
   var launcherChoice = null;
   var elfHttpAlreadyUp = false;
@@ -406,6 +406,14 @@
        query strings made the page open "broken" (assets/files fail) while
        home-icon open worked. PM can still cache-bust. */
     var navUrl = (label === 'elf-launcher') ? url : withCacheBust(url);
+    /* Tell Elf Launcher which WK is installed (hash only - no query string),
+       so its page can show the WK update banner. */
+    if (label === 'elf-launcher') {
+      try {
+        var wkv = currentAppVersion();
+        if (wkv) navUrl = String(navUrl).split('#')[0] + '#wkver=' + encodeURIComponent(wkv);
+      } catch (eV) { }
+    }
     uiLog('Opening ' + label + ' at ' + navUrl + ' ...', 'info');
     var target = window;
     try { if (window.top && window.top !== window) target = window.top; } catch (eTop) { target = window; }

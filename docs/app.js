@@ -406,6 +406,14 @@
        query strings made the page open "broken" (assets/files fail) while
        home-icon open worked. PM can still cache-bust. */
     var navUrl = (label === 'elf-launcher') ? url : withCacheBust(url);
+    /* Tell Elf Launcher which WK is installed (hash only - no query string),
+       so its page can show the WK update banner. */
+    if (label === 'elf-launcher') {
+      try {
+        var wkv = currentAppVersion();
+        if (wkv) navUrl = String(navUrl).split('#')[0] + '#wkver=' + encodeURIComponent(wkv);
+      } catch (eV) { }
+    }
     uiLog('Opening ' + label + ' at ' + navUrl + ' ...', 'info');
     var target = window;
     try { if (window.top && window.top !== window) target = window.top; } catch (eTop) { target = window; }
