@@ -2056,8 +2056,7 @@
       });
     }
     if (!info.sha256 || typeof fetch !== 'function') { legacy(); return; }
-    waitForElfLauncher(30, function (up) {
-      if (!up) { legacy(); return; }
+    function go() {
       installWkViaLauncher(info, function (ok, msg) {
         if (btn) btn.disabled = false;
         if (!ok) {
@@ -2068,6 +2067,27 @@
         }
         selfUpdateMessage(t('selfUpdated', { ver: info.version }));
         waitForNewWkAndReload(info.version);
+      });
+    }
+    function failNoLauncher() {
+      if (btn) btn.disabled = false;
+      selfUpdateSent = false;
+      uiLog('[update] Elf Launcher :1000 did not start - cannot download WK', 'error');
+      selfUpdateMessage(t('selfUpdateFail', { msg: 'Elf Launcher :1000 not running' }));
+    }
+    waitForElfLauncher(3, function (up) {
+      if (up) { go(); return; }
+      /* JB already done in this page: ask the exploit iframe to send the
+         bundled elf-launcher.elf to elfldr, then wait for :1000. */
+      uiLog('[update] :1000 down - sending elf-launcher.elf first ...', 'info');
+      var asked = false;
+      try {
+        var w = exploitEl && exploitEl.contentWindow;
+        if (w) { w.postMessage({ type: 'wkal', kind: 'resend-autoload', name: 'elf-launcher.elf' }, '*'); asked = true; }
+      } catch (eW) { }
+      if (!asked) { failNoLauncher(); return; }
+      waitForElfLauncher(30, function (up2) {
+        if (up2) go(); else failNoLauncher();
       });
     });
   }

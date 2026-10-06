@@ -303,6 +303,23 @@ async function main(userlandRW) {
   if (result.payloads) {
     log("kernel exploit complete", "info");
     log("elfldr is listening on port 9021", "info");
+    // WK self-update: parent may ask to (re)send a bundled ELF after JB,
+    // e.g. elf-launcher.elf so :1000 can download the new WK.
+    window.addEventListener("message", async (ev) => {
+      const d = ev.data;
+      if (!d || d.type !== "wkal" || d.kind !== "resend-autoload" || !d.name) return;
+      try {
+        const { sendAutoloadElf } = await import("./kexp.js");
+        log("resend: " + d.name + " -> 9021", "info");
+        const bytes = await sendAutoloadElf(
+          d.name, "../payloads/", p, chain, (message) => log(message, "info"));
+        window.parent.postMessage({ type: "wkal", kind: "resend-result", ok: true, name: d.name, bytes }, "*");
+      } catch (error) {
+        const why = error instanceof Error ? error.message : String(error);
+        log("resend failed: " + why, "error");
+        window.parent.postMessage({ type: "wkal", kind: "resend-result", ok: false, name: d.name, why }, "*");
+      }
+    });
     // WKAL autoload: honor ?autoload=<name> / sessionStorage wkal_autoload so
     // Payload Manager / elf-launcher still run after JB (same contract as
     // patches/slopkit-autoload.patch and patches/umtx2-autoload.patch).
