@@ -78,6 +78,7 @@ body {
   z-index: 20;
 }
 #footer b { color: #ffffff; font-weight: 600; }
+#footer a { color: inherit; text-decoration: none; pointer-events: auto; }
 
 #splash {
   position: fixed;
@@ -698,6 +699,7 @@ body.fail #progressPct { color: #fca5a5; }
   display: block !important;
 }
 #footer b { color: #ffffff; font-weight: 600; }
+#footer a { color: inherit; text-decoration: none; pointer-events: auto; }
 
 /* Post-JB launcher choice (splash, before exploit arms) */
 #launcherChoice {
