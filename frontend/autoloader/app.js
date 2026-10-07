@@ -1641,7 +1641,11 @@
 
 
   function bindLauncherChoiceUi() {
-    launcherChoice = loadLauncherChoice();
+    /* Custom build: always Payload Manager (pldmgr.elf) + always auto-start.
+       Overrides any saved splash choice / auto preference on every load. */
+    saveLauncherChoice(CHOICE_PAYLOAD_MANAGER);
+    try { localStorage.setItem('wkal_auto_jb', '1'); } catch (eAuto) { }
+    launcherChoice = CHOICE_PAYLOAD_MANAGER;
     updateDetectUi();
     syncChoiceUi();
     var pm = document.getElementById('choicePayloadManager');
