@@ -60,6 +60,8 @@ Full list of everyone who contributed to the bundled components (Relapse, umtx2,
 
 **[ps5-payload-dev](https://github.com/ps5-payload-dev)** / @john-tornblom - [PS5 Payload SDK](https://github.com/ps5-payload-dev/sdk) and [elfldr](https://github.com/ps5-payload-dev/elfldr).
 
+this fork: Payload Manager v0.5.2 bump, always-on Payload Manager + auto jailbreak.
+
 ### umtx2 (1.xx-5.50)
 
 [idlesauce/umtx2](https://github.com/idlesauce/umtx2): exploit largely from @shahrilnet / @n0llptr (lua UMTX); setup from @SpecterDev / @ChendoChap ([PS5-UMTX-Jailbreak](https://github.com/PS5Dev/PS5-UMTX-Jailbreak/)); PSFree by abc; ELF loader by @john-tornblom.
