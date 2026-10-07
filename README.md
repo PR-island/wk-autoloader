@@ -52,6 +52,8 @@ PS5 jailbreak host on port **1022**.
 
 ## Credits
 
+Full list of everyone who contributed to the bundled components (Relapse, umtx2, slopkit, Payload Manager and its translators, elfldr, PS5 Payload SDK, libraries): **[CREDITS.md](CREDITS.md)**.
+
 **X-F1REBALL-X** - packaging, routing, UI, offline cache (original [wk-autoloader](https://github.com/X-F1REBALL-X/wk-autoloader)).
 
 **itsPLK** - [Payload Manager](https://github.com/itsPLK/ps5-payload-manager) (bundled v0.5.2), [ps5-elfldr](https://github.com/itsPLK/ps5-elfldr), [ps5-unified-autoloader](https://github.com/itsPLK/ps5-unified-autoloader), [slopkit](https://github.com/itsPLK/slopkit) fork, [ps5-webkit-autoloader](https://github.com/itsPLK/ps5-webkit-autoloader).
