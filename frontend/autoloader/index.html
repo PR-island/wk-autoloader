@@ -18,8 +18,8 @@
       <p class="splash-brand">WK Autoloader <span class="splash-ver">v[[VERSION_PLACEHOLDER]]</span></p>
       <p class="support-title" data-i18n="supportTitle">Supported FW 1.00-5.50 / 7.00-13.60</p>
       <p class="detect-title" id="detectMsg" data-i18n="detecting">Detecting console...</p>
-      <p class="choice-title" data-i18n="afterJb">After jailbreak, open</p>
-      <div class="choice-row">
+      <p class="choice-title" style="display:none" data-i18n="afterJb">After jailbreak, open</p>
+      <div class="choice-row" style="display:none">
         <button type="button" class="choice-btn" id="choicePayloadManager" data-choice="payload-manager">
           <img class="choice-icon" src="payload-manager-icon.jpg" width="56" height="56" alt="" />
           <span class="choice-name" data-i18n="payloadManager">Payload Manager</span>
@@ -31,14 +31,14 @@
           <span class="choice-desc" data-i18n="elfLauncherDesc">Hybrid: open :1000 or send tip ELF</span>
         </button>
       </div>
-      <label class="auto-jb-toggle" for="autoJailbreak">
+      <label class="auto-jb-toggle" style="display:none" for="autoJailbreak">
         <input type="checkbox" id="autoJailbreak" />
         <span data-i18n="autoStartJb">Auto-start jailbreak</span>
       </label>
       <button type="button" id="startJailbreak" class="start-btn" data-i18n="startJailbreak">Start Jailbreak</button>
       <button type="button" id="cancelAutoStart" class="cancel-auto-btn" data-i18n="cancel" hidden>Cancel</button>
-      <p class="choice-hint" data-i18n="choiceSaved">Choice is saved on this console</p>
-      <p class="pages-links"><a class="pages-link" href="https://x-f1reball-x.github.io/elf-launcher/" target="_blank" rel="noopener" data-i18n="elfLauncherPage">Elf Launcher page</a></p>
+      <p class="choice-hint" style="display:none" data-i18n="choiceSaved">Choice is saved on this console</p>
+      <p class="pages-links" style="display:none"><a class="pages-link" href="https://x-f1reball-x.github.io/elf-launcher/" target="_blank" rel="noopener" data-i18n="elfLauncherPage">Elf Launcher page</a></p>
       <div id="langbox">
         <button type="button" id="langbtn" aria-haspopup="true">
           <span class="flag" id="langflag"></span>
