@@ -5,7 +5,7 @@
 #
 #   third_party/ps5-elfldr             -> frontend/autoloader/shared/elfldr-ps5.elf
 #   third_party/ps5-unified-autoloader -> frontend/autoloader/payloads/payload.elf
-#   itsPLK/ps5-payload-manager@v0.5.1  -> frontend/autoloader/payloads/pldmgr.elf
+#   itsPLK/ps5-payload-manager@v0.5.2  -> frontend/autoloader/payloads/pldmgr.elf
 #   X-F1REBALL-X/elf-launcher (tip)    -> frontend/autoloader/payloads/elf-launcher.elf
 #
 # The shared elfldr is used by the slopkit chain (7.00-12.00); umtx2
@@ -47,8 +47,8 @@ PAYLOAD_DEST="$ROOT/frontend/autoloader/payloads/payload.elf"
 # Standalone Payload Manager (splash choice payload-manager -> pldmgr.elf).
 # Pinned release; local copies (docs/ or sibling relapse tree) win when present.
 PLDMGR_REPO="itsPLK/ps5-payload-manager"
-PLDMGR_TAG="v0.5.1"
-PLDMGR_PINNED_SHA=05617c69ea145d1c11b8f7a6b7d3bd9e6df3831afd25d71a4ac85d63fb8e28aa
+PLDMGR_TAG="v0.5.2"
+PLDMGR_PINNED_SHA=62b3ba2a4937c2afc502f9a4e7242cca538610ebb4ae2800c7c6f72e7f268e7c
 PLDMGR_DEST="$ROOT/frontend/autoloader/payloads/pldmgr.elf"
 PLDMGR_LOCAL_CANDIDATES=(
     "$ROOT/docs/payloads/pldmgr.elf"
