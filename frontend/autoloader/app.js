@@ -1733,7 +1733,12 @@
     /* Auto-start is intentionally armed only after the splash has loaded and
        the saved preference has been read. The separate Cancel button leaves
        the preference enabled for the next load. */
-    if (auto && auto.checked) startAutoCountdown();
+    /* Fork: start immediately on load (no 3 s countdown / Cancel). */
+    if (auto && auto.checked && !chainStarted) {
+      if (go) { go.disabled = true; go.textContent = t('starting'); }
+      saveLauncherChoice(launcherChoice);
+      start();
+    }
   }
 
   /* ---- Self-update banner (Elf Launcher style) ----

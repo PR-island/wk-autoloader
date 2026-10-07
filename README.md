@@ -5,7 +5,7 @@
 > It only (1) bundles [itsPLK/ps5-payload-manager v0.5.2](https://github.com/itsPLK/ps5-payload-manager/releases/tag/v0.5.2)
 > (FW 13.60 support, SHA256 `62b3ba2a4937c2afc502f9a4e7242cca538610ebb4ae2800c7c6f72e7f268e7c`)
 > as `pldmgr.elf`, and (2) always selects Payload Manager and always
-> auto-starts the jailbreak (3 s cancellable countdown); the launcher
+> auto-starts the jailbreak immediately on open; the launcher
 > choice is hidden and the installer no longer adds the Elf Launcher icon.
 > Flow: WK cache → Relapse → elfldr `:9021` → `pldmgr.elf` → `:8084`.
 > Upstream: https://github.com/X-F1REBALL-X/wk-autoloader
